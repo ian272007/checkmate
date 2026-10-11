@@ -1,3 +1,69 @@
+<?php
+session_start();
+require "../../config/config.php";   // your connection file (CHANGE the name/path if it is different)
+
+// make mysqli throw real errors and read/write Filipino/emoji text correctly
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$conn->set_charset("utf8mb4");
+
+// only admins can open this page
+// (CHANGE 'role' and the login path if yours are different)
+if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: ../../authentication/Login/login.php");
+    exit;
+}
+
+// token used to protect the delete button
+if (empty($_SESSION["csrf"])) {
+    $_SESSION["csrf"] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION["csrf"];
+
+// ---------- questions (with the name of the student who asked) ----------
+$sql = "SELECT q.question_id AS id,
+               q.question,
+               q.status,
+               q.subject,
+               q.question_type AS type,
+               q.question_course AS course,
+               TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS student
+        FROM questions q
+        LEFT JOIN users u ON u.id = q.user_id
+        ORDER BY q.question_id DESC";
+
+$questions = [];
+$result = $conn->query($sql);
+while ($row = $result->fetch_assoc()) {
+    $row["id"] = (int) $row["id"];
+    if ($row["student"] === "") {
+        $row["student"] = "Unknown";
+    }
+    $questions[] = $row;
+}
+
+// ---------- subjects for the filter ----------
+$subjects = [];
+$result = $conn->query("SELECT subject_name FROM question_subjects WHERE status = 'Active' ORDER BY subject_name");
+while ($row = $result->fetch_assoc()) {
+    $subjects[] = $row["subject_name"];
+}
+
+// ---------- statuses for the filter ----------
+$statuses = [];
+$result = $conn->query("SELECT DISTINCT status FROM questions WHERE status IS NOT NULL ORDER BY status");
+while ($row = $result->fetch_assoc()) {
+    $statuses[] = $row["status"];
+}
+
+// ---------- sidebar numbers ----------
+$studentCount = (int) $conn->query("SELECT COUNT(*) AS c FROM users WHERE role = 'student'")->fetch_assoc()["c"];
+$pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE status = 'Pending'")->fetch_assoc()["c"];
+
+// short helper for printing safe text in html
+function e($text) {
+    return htmlspecialchars($text, ENT_QUOTES, "UTF-8");
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,11 +72,8 @@
 
     <title>CHECKMATE - Questions</title>
 
-    <!-- Same stylesheet as the other admin pages -->
-         <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/question_ad.css">
-
-
+    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= time() ?>">
+<link rel="stylesheet" href="../../asset/css/question_ad.css?v=<?= time() ?>">
 </head>
 
 <body>
@@ -21,25 +84,22 @@
 
     <aside class="sidebar">
 
-        <!-- Logo -->
         <div class="logo">
             <span>♞</span>
             CHECKMATE
         </div>
 
-        <!-- Account Type -->
         <div class="admin-label">
             ADMINISTRATION
         </div>
 
-
-        <!-- OVERVIEW MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
                 OVERVIEW
             </div>
- <ul class="sidebar-menu">
+
+            <ul class="sidebar-menu">
 
                 <li>
                     <a href="admin_home.php" data-page="dashboard">
@@ -52,7 +112,7 @@
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <span class="menu-count"><?= $studentCount ?></span>
                     </a>
                 </li>
 
@@ -72,11 +132,8 @@
 
             </ul>
 
-
         </div>
 
-
-        <!-- MANAGEMENT MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -103,7 +160,9 @@
                     <a href="report.php" data-page="reports">
                         <span class="menu-icon">▤</span>
                         <span>Reports</span>
-                        <span class="menu-dot"></span>
+                        <?php if ($pendingReports > 0): ?>
+                            <span class="menu-dot"></span>
+                        <?php endif; ?>
                     </a>
                 </li>
 
@@ -111,44 +170,40 @@
 
         </div>
 
-
         <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-       <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
-
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
 
     </aside>
 
@@ -159,7 +214,6 @@
 
     <main class="main">
 
-        <!-- TOP BAR -->
         <header class="topbar">
 
             <div class="topbar-left">
@@ -180,52 +234,45 @@
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pendingReports > 0): ?>
+                        <span class="notification-count"><?= $pendingReports ?></span>
+                    <?php endif; ?>
 
                 </button>
-
-            
 
             </div>
 
         </header>
 
 
-        <!-- PAGE CONTENT -->
         <section class="content">
 
-            <!-- Search, filters and add button -->
+            <!-- Search and filters -->
             <div class="toolbar">
 
                 <div class="search-box">
                     <span class="search-icon">⌕</span>
                     <input type="text" id="searchInput" class="search-input"
-                           placeholder="Search questions...">
+                           placeholder="Search questions or students...">
                 </div>
 
                 <select id="categoryFilter" class="filter-select">
-                    <option value="all">All Categories</option>
-                    <option value="Data Structures">Data Structures</option>
-                    <option value="CS Fundamentals">CS Fundamentals</option>
-                    <option value="Tools & Setup">Tools & Setup</option>
-                    <option value="OOP">OOP</option>
-                    <option value="Web Development">Web Development</option>
+                    <option value="all">All Subjects</option>
+                    <?php foreach ($subjects as $subject): ?>
+                        <option value="<?= e($subject) ?>"><?= e($subject) ?></option>
+                    <?php endforeach; ?>
                 </select>
 
                 <select id="statusFilter" class="filter-select">
                     <option value="all">All Status</option>
-                    <option value="Published">Published</option>
-                    <option value="Pending">Pending</option>
+                    <?php foreach ($statuses as $status): ?>
+                        <option value="<?= e($status) ?>"><?= e($status) ?></option>
+                    <?php endforeach; ?>
                 </select>
-
-                <button class="btn-gold" id="addQuestionButton">+ Add Question</button>
 
             </div>
 
@@ -239,14 +286,15 @@
                         <tr>
                             <th>ID</th>
                             <th>Question</th>
-                            <th>Students</th>
-                            <th>Category</th>
+                            <th>Student</th>
+                            <th>Subject</th>
+                            <th>Type</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
 
-                    <!-- rows are filled in by the JavaScript below -->
+                    <!-- rows are filled in by question_ad.js -->
                     <tbody id="questionsBody"></tbody>
 
                 </table>
@@ -254,17 +302,9 @@
             </div>
 
 
-            <!-- Count + pagination -->
             <div class="table-footer">
 
                 <div class="showing-text" id="showingText"></div>
-
-                <!-- TODO: make pagination work when there are more questions -->
-                <div class="pagination">
-                    <button class="page-btn">‹</button>
-                    <button class="page-btn current">1</button>
-                    <button class="page-btn">›</button>
-                </div>
 
             </div>
 
@@ -273,53 +313,14 @@
     </main>
 
 
-    <!-- =========================================
-         ADD QUESTION POPUP
-         ========================================= -->
-
-    <div class="modal-overlay" id="addModal">
-
-        <div class="modal">
-
-            <div class="modal-label">QUESTION BANK</div>
-            <h2 class="modal-question">Add question</h2>
-
-            <div class="form-group">
-                <label for="newquestion">Title</label>
-                <input type="text" id="newquestion" class="form-input" placeholder="What is recursion?">
-            </div>
-
-            <div class="form-group">
-                <label for="newstudent">Students</label>
-                <input type="text" id="newstudent" class="form-input" placeholder="Juan Dela Cruz">
-            </div>
-
-            <div class="form-group">
-                <label for="newCategory">Category</label>
-                <select id="newCategory" class="filter-select">
-                    <option value="Data Structures">Data Structures</option>
-                    <option value="CS Fundamentals">CS Fundamentals</option>
-                    <option value="Tools & Setup">Tools & Setup</option>
-                    <option value="OOP">OOP</option>
-                    <option value="Web Development">Web Development</option>
-                </select>
-            </div>
-
-            <!-- error message shows here -->
-            <div class="form-error" id="formError"></div>
-
-            <div class="modal-buttons">
-                <button class="btn-outline" id="cancelAdd">Cancel</button>
-                <button class="btn-gold" id="saveAdd">Add Question</button>
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- TOAST MESSAGE (styled in style.css) -->
     <div class="toast" id="toast"></div>
+
+    <!-- data from the database, used by question_ad.js -->
+    <script>
+        var questions = <?= json_encode($questions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+        var csrfToken = <?= json_encode($csrf) ?>;
+        var pendingReports = <?= $pendingReports ?>;
+    </script>
 
     <script src="../../asset/js/question_ad.js"></script>
 

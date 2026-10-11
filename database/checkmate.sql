@@ -31,3 +31,42 @@ CREATE TABLE IF NOT EXISTS answers (
     INDEX idx_answers_question (question_id),
     INDEX idx_answers_user (user_id)
 );
+
+
+CREATE TABLE IF NOT EXISTS question_subjects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    subject_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Active'
+);
+
+
+CREATE TABLE IF NOT EXISTS question_courses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    course_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Active'
+);
+
+CREATE TABLE IF NOT EXISTS question_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Active'
+);
+
+CREATE TABLE IF NOT EXISTS `reports` (
+  `report_id` int(11) NOT NULL AUTO_INCREMENT,
+  `reporter_id` int(11) NOT NULL,          -- the student who sent the report (users.id)
+  `question_id` int(11) DEFAULT NULL,      -- the question that was reported
+  `reason` varchar(100) NOT NULL,          -- for example: Inappropriate question
+  `details` text DEFAULT NULL,             -- optional explanation from the student
+  `status` varchar(20) NOT NULL DEFAULT 'Pending',   -- Pending or Resolved
+  `create_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`report_id`),
+  KEY `idx_reports_status` (`status`),
+  KEY `idx_reports_reporter` (`reporter_id`),
+  KEY `idx_reports_question` (`question_id`),
+  CONSTRAINT `fk_reports_user` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reports_question` FOREIGN KEY (`question_id`) REFERENCES `questions` (`question_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+ 
+
+ 

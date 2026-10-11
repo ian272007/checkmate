@@ -1,11 +1,110 @@
 <?php
 session_start();
 
+// show times in the Philippines so the "x min ago" text is correct
+date_default_timezone_set("Asia/Manila");
+
 // if not logged in as admin, go to the login page
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
     header("Location: /checkmate/authentication/Login/login.php");
     exit();
 }
+
+// connect to the database (gives us the $conn variable)
+require_once "../../config/config.php";
+
+
+/* =========================================
+   SMALL HELPER FUNCTIONS
+   ========================================= */
+
+// makes text safe to print inside HTML
+function e($value)
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, "UTF-8");
+}
+
+// runs a "SELECT COUNT(*)" query and returns the number
+function getCount($conn, $sql)
+{
+    $result = $conn->query($sql);
+
+    // if the query failed, just show 0 instead of crashing the page
+    if (!$result) {
+        return 0;
+    }
+
+    $row = $result->fetch_row();
+    return (int)$row[0];
+}
+
+// turns a date into text like "15 min ago"
+function timeAgo($datetime)
+{
+    $seconds = time() - strtotime($datetime);
+
+    if ($seconds < 60) {
+        return "just now";
+    } elseif ($seconds < 3600) {
+        return floor($seconds / 60) . " min ago";
+    } elseif ($seconds < 86400) {
+        $hours = floor($seconds / 3600);
+        return $hours . ($hours == 1 ? " hr" : " hrs") . " ago";
+    } else {
+        $days = floor($seconds / 86400);
+        return $days . ($days == 1 ? " day" : " days") . " ago";
+    }
+}
+
+
+/* =========================================
+   GET THE NUMBERS FROM THE DATABASE
+   ========================================= */
+
+// 1. registered students (only accounts with the student role)
+$total_students = getCount($conn, "SELECT COUNT(*) FROM users WHERE role = 'student'");
+
+// 2. open questions (questions that are still Active)
+$open_questions = getCount($conn, "SELECT COUNT(*) FROM questions WHERE status = 'Active'");
+
+// 3. collaborations (every collaboration request)
+$total_collabs = getCount($conn, "SELECT COUNT(*) FROM collaborations");
+
+// 4 and 5. reports
+// first check if the reports table exists, so the page does not crash
+// TODO: remove this check once the reports table is created for sure
+$reports_table_ready = false;
+$check = $conn->query("SHOW TABLES LIKE 'reports'");
+
+if ($check && $check->num_rows > 0) {
+    $reports_table_ready = true;
+}
+
+$pending_reports = 0;
+$recent_reports = [];
+
+if ($reports_table_ready) {
+
+    // 4. pending reports
+    $pending_reports = getCount($conn, "SELECT COUNT(*) FROM reports WHERE status = 'Pending'");
+
+    // 5. the 3 newest reports
+    $sql = "SELECT report_id, reason, status, create_at
+            FROM reports
+            ORDER BY create_at DESC
+            LIMIT 3";
+
+    $result = $conn->query($sql);
+
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $recent_reports[] = $row;
+        }
+    }
+}
+
+// we have everything we need, so close the connection
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -16,7 +115,9 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
     <title>CHECKMATE - Admin Dashboard</title>
 
-    <link rel="stylesheet" href="../../asset/css/admin_home.css">
+    <<!-- filemtime() is the time the file was last saved, so the link changes whenever you edit the CSS -->
+<link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
+<link rel="stylesheet" href="../../asset/css/student.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student.css') ?>">
 
 </head>
 
@@ -63,7 +164,8 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <!-- was a fixed 8, now it shows the real number -->
+                        <span class="menu-count"><?= $total_students ?></span>
                     </a>
                 </li>
 
@@ -90,7 +192,6 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
              MANAGEMENT MENU
              ===================================== -->
 
-       <!-- MANAGEMENT MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -127,45 +228,45 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
 
         <!-- =====================================
-             ADMIN ACCOUNT
+             ADMIN ACCOUNT (bottom of sidebar)
              ===================================== -->
 
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <!-- three dots (vertical) on the right side of the profile -->
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <!-- menu that opens when the 3 dots are clicked -->
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
 
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
     </aside>
 
 
@@ -197,19 +298,18 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
+                <!-- Notifications (the number is the pending reports) -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pending_reports > 0): ?>
+                        <span class="notification-count">
+                            <?= $pending_reports ?>
+                        </span>
+                    <?php endif; ?>
 
                 </button>
-
-
-         
 
             </div>
 
@@ -247,41 +347,6 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
 
             <!-- =================================
-                 ATTENTION NOTICE
-                 ================================= -->
-
-            <div class="notice">
-
-                <div class="notice-left">
-
-                    <div class="notice-icon">
-                        ♟
-                    </div>
-
-                    <div>
-
-                        <div class="notice-title">
-                            Student verification requires attention
-                        </div>
-
-                        <div class="notice-text">
-                            8 student registrations are currently waiting for verification.
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <button class="notice-button" id="verifyButton">
-                    Review
-                </button>
-
-            </div>
-
-
-
-            <!-- =================================
                  SYSTEM OVERVIEW
                  ================================= -->
 
@@ -309,7 +374,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     </div>
 
                     <div class="overview-card-number">
-                        124
+                        <?= $total_students ?>
                     </div>
 
                     <div class="overview-card-description">
@@ -327,7 +392,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     </div>
 
                     <div class="overview-card-number">
-                        36
+                        <?= $open_questions ?>
                     </div>
 
                     <div class="overview-card-description">
@@ -345,7 +410,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     </div>
 
                     <div class="overview-card-number">
-                        19
+                        <?= $total_collabs ?>
                     </div>
 
                     <div class="overview-card-description">
@@ -363,7 +428,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     </div>
 
                     <div class="overview-card-number">
-                        5
+                        <?= $pending_reports ?>
                     </div>
 
                     <div class="overview-card-description">
@@ -377,158 +442,11 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
 
             <!-- =================================
-                 RECENT INFORMATION
+                 RECENT REPORTS
+                 (panel-grid centers the panel)
                  ================================= -->
 
             <div class="panel-grid">
-
-
-                <!-- =================================
-                     RECENT REGISTRATIONS
-                     ================================= -->
-
-                <div class="panel">
-
-                    <div class="panel-header">
-
-                        <div>
-
-                            <div class="panel-label">
-                                STUDENT VERIFICATION
-                            </div>
-
-                            <h2 class="panel-heading">
-                                Recent registrations
-                            </h2>
-
-                        </div>
-
-                        <a href="students.html" class="panel-link" id="viewStudents">
-                            View all →
-                        </a>
-
-                    </div>
-
-
-
-                    <!-- Student 1 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            J
-                        </div>
-
-                        <div class="list-info">
-
-                            <div class="list-name">
-                                Jayzen Titum
-                            </div>
-
-                            <div class="list-sub">
-                                BSIT · 2nd Year
-                            </div>
-
-                        </div>
-
-                        <!-- was class "pending" but the text says Verified, so changed it to verified -->
-                        <span class="status verified">
-                            Verified
-                        </span>
-
-                    </div>
-
-
-
-                    <!-- Student 2 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            M
-                        </div>
-
-                        <div class="list-info">
-
-                            <div class="list-name">
-                                Maui Moana
-                            </div>
-
-                            <div class="list-sub">
-                                BSIT · 2nd Year
-                            </div>
-
-                        </div>
-
-                        <span class="status pending">
-                            Pending
-                        </span>
-
-                    </div>
-
-
-
-                    <!-- Student 3 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            I
-                        </div>
-
-                        <div class="list-info">
-
-                            <div class="list-name">
-                                Ian Henerasyon
-                            </div>
-
-                            <div class="list-sub">
-                                BSIT · 2nd Year
-                            </div>
-
-                        </div>
-
-                        <span class="status verified">
-                            Verified
-                        </span>
-
-                    </div>
-
-
-
-                    <!-- Student 4 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            D
-                        </div>
-
-                        <div class="list-info">
-
-                            <div class="list-name">
-                                dds James
-                            </div>
-
-                            <div class="list-sub">
-                                BSIT · 2nd Year
-                            </div>
-
-                        </div>
-
-                        <span class="status pending">
-                            Pending
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- =================================
-                     RECENT REPORTS
-                     ================================= -->
 
                 <div class="panel">
 
@@ -553,102 +471,74 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
                     </div>
 
 
+                    <?php if (!$reports_table_ready): ?>
 
-                    <!-- Report 1 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            !
+                        <!-- the reports table is not in the database yet -->
+                        <div class="list-row">
+                            <div class="list-info">
+                                <div class="list-sub">
+                                    The reports table does not exist yet. Import reports.sql in phpMyAdmin.
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="list-info">
+                    <?php elseif (count($recent_reports) == 0): ?>
 
-                            <div class="list-name">
-                                Inappropriate question
+                        <!-- table exists but nobody reported anything -->
+                        <div class="list-row">
+                            <div class="list-info">
+                                <div class="list-sub">
+                                    No reports yet.
+                                </div>
                             </div>
-
-                            <div class="list-sub">
-                                Report #0042 · 15 min ago
-                            </div>
-
                         </div>
 
-                        <span class="status new">
-                            New
-                        </span>
+                    <?php else: ?>
 
-                    </div>
+                        <?php foreach ($recent_reports as $report): ?>
 
+                            <?php
+                            // Pending reports get a "!" and the Resolved ones get a check mark
+                            if ($report["status"] == "Pending") {
+                                $icon = "!";
+                                $status_class = "new";
+                            } else {
+                                $icon = "✓";
+                                $status_class = "done";
+                            }
+                            ?>
 
+                            <div class="list-row">
 
-                    <!-- Report 2 -->
+                                <div class="list-avatar">
+                                    <?= $icon ?>
+                                </div>
 
-                    <div class="list-row">
+                                <div class="list-info">
 
-                        <div class="list-avatar">
-                            !
-                        </div>
+                                    <div class="list-name">
+                                        <?= e($report["reason"]) ?>
+                                    </div>
 
-                        <div class="list-info">
+                                    <div class="list-sub">
+                                        Report #<?= str_pad($report["report_id"], 4, "0", STR_PAD_LEFT) ?>
+                                        · <?= e(timeAgo($report["create_at"])) ?>
+                                    </div>
 
-                            <div class="list-name">
-                                Incorrect subject
+                                </div>
+
+                                <span class="status <?= $status_class ?>">
+                                    <?= e($report["status"]) ?>
+                                </span>
+
                             </div>
 
-                            <div class="list-sub">
-                                Report #0041 · 42 min ago
-                            </div>
+                        <?php endforeach; ?>
 
-                        </div>
-
-                        <span class="status new">
-                            New
-                        </span>
-
-                    </div>
+                    <?php endif; ?>
 
 
-
-                    <!-- Report 3 -->
-
-                    <div class="list-row">
-
-                        <div class="list-avatar">
-                            ✓
-                        </div>
-
-                        <div class="list-info">
-
-                            <div class="list-name">
-                                Resolved collaboration
-                            </div>
-
-                            <div class="list-sub">
-                                Report #0040 · 2 hrs ago
-                            </div>
-
-                        </div>
-
-                        <span class="status done">
-                            Done
-                        </span>
-
-                    </div>
-
-
-
-                    <div class="list-row">
-
-                        <div class="list-info">
-
-                            <div class="list-sub">
-                                Reports are reviewed by administrators.
-                            </div>
-
-                        </div>
-
-                    </div>
+                    
 
                 </div>
 
@@ -659,6 +549,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
             <!-- =================================
                  QUICK ACCESS
                  ================================= -->
+         
 
             <div class="quick-access">
 
@@ -677,34 +568,6 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 
 
                 <div class="quick-grid">
-
-
-                    <!-- Enrollment -->
-
-                    <div class="quick-card" data-action="enrollment">
-
-                        <div class="quick-icon">
-                            +
-                        </div>
-
-                        <div class="quick-info">
-
-                            <div class="quick-title">
-                                Enrollment
-                            </div>
-
-                            <div class="quick-description">
-                                Add or update students
-                            </div>
-
-                        </div>
-
-                        <div class="quick-arrow">
-                            →
-                        </div>
-
-                    </div>
-
 
 
                     <!-- Subjects -->

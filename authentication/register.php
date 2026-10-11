@@ -84,11 +84,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 // INSERT USER
                 // Keep the existing full_name database column.
-                $sql = "
-                    INSERT INTO users
-                    (first_name, last_name, student_id, email, course, year_level, password, role)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ";
+               $sql = "
+    INSERT INTO users ( first_name, last_name, student_id, email, course, year_level, password, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+";
 
                 $stmt = $conn->prepare($sql);
 
@@ -99,16 +98,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 } else {
 
                     // 8 values => 8 type characters
-                    $stmt->bind_param(
-                        "ssssssss",
-                        $first_name,
-                        $last_name,
-                        $student_id,
-                        $email,
-                        $course,
-                        $year,
-                        $hashed_password,
-                        $role
+                  $stmt->bind_param(
+                    "ssssssss",
+                    $first_name,
+                    $last_name,
+                    $student_id,
+                    $email,
+                    $course,
+                    $year,
+                    $hashed_password,
+                    $role
                     );
 
                     if ($stmt->execute()) {

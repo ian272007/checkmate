@@ -155,7 +155,7 @@ $csrf = $_SESSION["messages_csrf"];
             <strong><?= e($fullName) ?></strong>
 
             <span>
-                <?= e($course ?: "Student") ?><?= $course !== "" ? " · " : "" ?><?= e($user["student_id"]) ?>
+                <?= e($course ?: "Student") ?><?= $course !== "" ? "  " : "" ?><br><?= e($user["student_id"]) ?>
             </span>
         </div>
 

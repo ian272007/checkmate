@@ -1,554 +1,309 @@
+/* =========================================
+   CHECKMATE STUDENTS PAGE
+   student.css
+   (loaded AFTER admin_home.css, which already has the
+   sidebar, account menu, topbar, toast and logout styles)
+   ========================================= */
 
 
-        /* active sidebar item has a gold outline in the screenshot */
-        .sidebar-menu a.active {
-            background: #1d1a14;
-            border: 1px solid #6b5630;
-            color: #e2e5e8;
-        }
+/* ---------- toolbar (search + filters) ---------- */
 
-        /* hide the little gold line, the outline replaces it */
-        .sidebar-menu a.active::before {
-            display: none;
-        }
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-        /* admin account sticks to the bottom of the sidebar */
-       .sidebar-account {
+    margin-bottom: 14px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+}
+
+.search-icon {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0 12px 10px;
-    background: #111519;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    color: #77818a;
+    font-size: 15px;
+    pointer-events: none;
 }
 
-/* ---------- admin account: 3 dots (right side) + popup menu ---------- */
+.search-input,
+.filter-select {
+    height: 38px;
 
-.sidebar-account-user {
-    display: flex;
-    align-items: center;
+    background: #11161a;
+    color: #d9dde1;
+
+    border: 1px solid #292f34;
+    border-radius: 5px;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+
+    outline: none;
 }
 
-.account-menu-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
+.search-input {
+    width: 100%;
+    padding: 0 12px 0 34px;
+}
 
-    width: 28px;
-    height: 28px;
-    margin-left: auto;
-    flex-shrink: 0;
+.search-input::placeholder {
+    color: #68727b;
+}
 
-    background: transparent;
+.filter-select {
+    appearance: none;
+    -webkit-appearance: none;
 
-    border: 1px solid transparent;
-    border-radius: 4px;
+    padding: 0 28px 0 12px;
 
     cursor: pointer;
+
+    /* little arrow on the right side */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2377818a' stroke-width='1.3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
 }
 
-.account-menu-btn span {
-    display: block;
-    width: 3px;
-    height: 3px;
-
-    background: #6d9b85;
-    border-radius: 50%;
+.search-input:focus,
+.filter-select:focus {
+    border-color: #d2aa60;
 }
 
-.account-menu-btn:hover,
-.account-menu-btn.open {
-    background: #1d1a14;
-    border-color: #6b5630;
+.filter-select option {
+    background: #11161a;
+    color: #d9dde1;
 }
 
-.account-menu-btn:hover span,
-.account-menu-btn.open span {
-    background: #d2aa60;
-}
 
-.account-menu {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(100% + 6px);
+/* ---------- students table ---------- */
 
-    display: none;
-
+.table-wrap {
     background: #11161a;
 
     border: 1px solid #292f34;
     border-radius: 5px;
 
-    overflow: hidden;
-    z-index: 300;
+    overflow-x: auto;
 }
 
-.account-menu.show {
-    display: block;
+.students-table {
+    width: 100%;
+    min-width: 760px;
+
+    border-collapse: collapse;
 }
 
-.account-menu a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.students-table th {
+    padding: 14px 16px;
 
-    padding: 11px 14px;
+    background: #0f1418;
+    color: #cfd4d8;
+
+    border-bottom: 1px solid #292f34;
+
+    font-size: 11px;
+    font-weight: normal;
+    text-align: left;
+}
+
+.students-table td {
+    padding: 0 16px;
+    height: 52px;
 
     color: #d5d9dc;
 
-    font-size: 12px;
-    text-decoration: none;
+    border-bottom: 1px solid #242a2f;
+
+    font-size: 11px;
 }
 
-.account-menu a:hover {
+.students-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.students-table tbody tr:hover {
     background: #151a1e;
+}
+
+.cell-id {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 22px;
+    height: 22px;
+    padding: 0 4px;
+
+    background: #1a2025;
+    color: #9aa3ab;
+
+    border: 1px solid #292f34;
+    border-radius: 4px;
+
+    font-size: 10px;
+}
+
+.cell-muted {
+    color: #7f8992;
+}
+
+.action-btn {
+    padding: 4px 9px;
+    margin-right: 4px;
+
+    background: #171c21;
+    color: #cfd4d8;
+
+    border: 1px solid #343b41;
+    border-radius: 4px;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    border-color: #d2aa60;
     color: #d2aa60;
 }
 
-.account-menu a + a {
-    border-top: 1px solid #242a2f;
-}
+.empty-row td {
+    height: 80px;
 
-.account-menu .menu-logout {
-    color: #d0865a;
-}
-
-.account-menu .menu-logout:hover {
-    color: #e59a6d;
-}
-
-.account-menu-icon {
-    width: 14px;
     text-align: center;
+    color: #68727b;
 }
 
-        .topbar-title {
-            font-size: 22px;
-        }
-
-        .logout {
-            color: #b08c4d;
-            font-size: 12px;
-            letter-spacing: 1.8px;
-            font-weight: 700;
-            text-decoration: none;
-        }
 
-        .logout:hover {
-            color: #d2aa60;
-        }
+/* ---------- bottom of table (count + pages) ---------- */
 
+.table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 
-        /* ---------- toolbar (search + filters + add button) ---------- */
+    margin-top: 14px;
+}
 
-        .toolbar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+.showing-text {
+    color: #68727b;
+    font-size: 11px;
+}
 
-            margin-bottom: 14px;
-        }
+.pagination {
+    display: flex;
+    gap: 5px;
+}
 
-        .search-box {
-            position: relative;
-            flex: 1;
-        }
+.page-btn {
+    width: 24px;
+    height: 24px;
 
-        .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+    background: #11161a;
+    color: #77818a;
 
-            color: #77818a;
-            font-size: 15px;
-            pointer-events: none;
-        }
+    border: 1px solid #292f34;
+    border-radius: 4px;
 
-        .search-input,
-        .filter-select,
-        .form-input {
-            height: 38px;
+    font-size: 11px;
 
-            background: #11161a;
-            color: #d9dde1;
+    cursor: pointer;
+}
 
-            border: 1px solid #292f34;
-            border-radius: 5px;
+.page-btn:hover:not(:disabled) {
+    border-color: #d2aa60;
+    color: #d2aa60;
+}
 
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
+.page-btn.current {
+    background: #1d1a14;
+    color: #d2aa60;
+    border-color: #6b5630;
+}
 
-            outline: none;
-        }
+/* the ‹ and › buttons when there is no page to go to */
+.page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
 
-        .search-input {
-            width: 100%;
-            padding: 0 12px 0 34px;
-        }
 
-        .search-input::placeholder {
-            color: #68727b;
-        }
+/* ---------- bell button + red/gold number badge ---------- */
+/* these are also in admin_home.css, but they are repeated here so the bell
+   still looks right on this page even if admin_home.css is old or cached */
 
-        .filter-select,
-        .form-input {
-            padding: 0 12px;
-        }
+.notification {
+    position: relative;
 
-        .filter-select {
-            appearance: none;
-            -webkit-appearance: none;
+    width: 32px;
+    height: 32px;
 
-            padding-right: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-            cursor: pointer;
+    background: transparent;
+    color: #8a949d;
 
-            /* little arrow on the right side */
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2377818a' stroke-width='1.3'/></svg>");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-        }
+    border: none;
 
-        .search-input:focus,
-        .filter-select:focus,
-        .form-input:focus {
-            border-color: #d2aa60;
-        }
+    cursor: pointer;
 
-        .filter-select option {
-            background: #11161a;
-            color: #d9dde1;
-        }
+    /* bigger bell on this page (same as before) */
+    font-size: 30px;
+}
 
-        .btn-gold {
-            height: 38px;
+.notification:hover {
+    color: #d2aa60;
+}
 
-            padding: 0 16px;
+.notification-count {
+    position: absolute;
 
-            background: #d2aa60;
-            color: #111519;
+    top: 1px;
+    right: 0;
 
-            border: 1px solid #d2aa60;
-            border-radius: 5px;
+    min-width: 14px;
+    height: 14px;
 
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-            cursor: pointer;
-            white-space: nowrap;
+    background: #d2aa60;
+    color: #111519;
 
-            transition: background 0.2s ease;
-        }
+    border-radius: 50%;
 
-        .btn-gold:hover {
-            background: #e0b96f;
-        }
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    font-weight: bold;
+}
 
-        .btn-outline {
-            height: 38px;
 
-            padding: 0 16px;
+/* ---------- small screens ---------- */
 
-            background: transparent;
-            color: #89929a;
+@media (max-width: 700px) {
 
-            border: 1px solid #343b41;
-            border-radius: 5px;
+    .toolbar {
+        flex-wrap: wrap;
+    }
 
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
+    .search-box {
+        flex: 1 1 100%;
+    }
 
-            cursor: pointer;
-        }
-
-        .btn-outline:hover {
-            color: #d7dce0;
-            border-color: #4a5259;
-        }
-
-
-        /* ---------- students table ---------- */
-
-        .table-wrap {
-            background: #11161a;
-
-            border: 1px solid #292f34;
-            border-radius: 5px;
-
-            overflow-x: auto;
-        }
-
-        .students-table {
-            width: 100%;
-            min-width: 760px;
-
-            border-collapse: collapse;
-        }
-
-        .students-table th {
-            padding: 14px 16px;
-
-            background: #0f1418;
-            color: #cfd4d8;
-
-            border-bottom: 1px solid #292f34;
-
-            font-size: 11px;
-            font-weight: normal;
-            text-align: left;
-        }
-
-        .students-table td {
-            padding: 0 16px;
-            height: 52px;
-
-            color: #d5d9dc;
-
-            border-bottom: 1px solid #242a2f;
-
-            font-size: 11px;
-        }
-
-        .students-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .students-table tbody tr:hover {
-            background: #151a1e;
-        }
-
-        .cell-id {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-
-            width: 22px;
-            height: 22px;
-
-            background: #1a2025;
-            color: #9aa3ab;
-
-            border: 1px solid #292f34;
-            border-radius: 4px;
-
-            font-size: 10px;
-        }
-
-        .cell-muted {
-            color: #7f8992;
-        }
-
-        /* status badges: square-ish with a dark tinted background */
-        .students-table .status {
-            display: inline-block;
-
-            padding: 4px 10px;
-
-            border-radius: 4px;
-
-            font-size: 10px;
-        }
-
-        .students-table .status.verified {
-            background: #16231e;
-        }
-
-        .students-table .status.pending {
-            background: #241e12;
-        }
-
-        .action-btn {
-            padding: 4px 9px;
-            margin-right: 4px;
-
-            background: #171c21;
-            color: #cfd4d8;
-
-            border: 1px solid #343b41;
-            border-radius: 4px;
-
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-
-            cursor: pointer;
-        }
-
-        .action-btn:hover {
-            border-color: #d2aa60;
-            color: #d2aa60;
-        }
-
-        .empty-row td {
-            height: 80px;
-
-            text-align: center;
-            color: #68727b;
-        }
-
-
-        /* ---------- bottom of table (count + pages) ---------- */
-
-        .table-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            margin-top: 14px;
-        }
-
-        .showing-text {
-            color: #68727b;
-            font-size: 11px;
-        }
-
-        .pagination {
-            display: flex;
-            gap: 5px;
-        }
-
-        .page-btn {
-            width: 24px;
-            height: 24px;
-
-            background: #11161a;
-            color: #77818a;
-
-            border: 1px solid #292f34;
-            border-radius: 4px;
-
-            font-size: 11px;
-
-            cursor: pointer;
-        }
-
-        .page-btn.current {
-            background: #1d1a14;
-            color: #d2aa60;
-            border-color: #6b5630;
-        }
-
-
-        /* ---------- add student popup ---------- */
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-
-            display: none;
-            align-items: center;
-            justify-content: center;
-
-            background: rgba(0, 0, 0, 0.65);
-
-            z-index: 400;
-        }
-
-        .modal-overlay.show {
-            display: flex;
-        }
-
-        .modal {
-            width: 100%;
-            max-width: 420px;
-
-            padding: 22px;
-
-            background: #11161a;
-
-            border: 1px solid #292f34;
-            border-left: 2px solid #d2aa60;
-            border-radius: 5px;
-        }
-
-        .modal-label {
-            color: #68727b;
-
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .modal-title {
-            margin: 5px 0 18px;
-
-            color: #dfe2e5;
-
-            font-family: Georgia, "Times New Roman", serif;
-            font-size: 19px;
-            font-weight: normal;
-        }
-
-        .form-group {
-            margin-bottom: 12px;
-        }
-
-        .form-group label {
-            display: block;
-
-            margin-bottom: 6px;
-
-            color: #89929a;
-
-            font-size: 11px;
-        }
-
-        .form-group .form-input,
-        .form-group .filter-select {
-            width: 100%;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        .form-error {
-            min-height: 16px;
-            margin-bottom: 10px;
-
-            color: #c59b57;
-
-            font-size: 11px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-
-
-        /* ---------- small screens ---------- */
-
-        @media (max-width: 700px) {
-
-            .toolbar {
-                flex-wrap: wrap;
-            }
-
-            .search-box {
-                flex: 1 1 100%;
-            }
-
-            .table-footer {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-        }
-
-        .notification {
-            font-size: 30px;
-        }
+    .table-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
