@@ -1,253 +1,247 @@
+// ---------- 1. GET ELEMENTS ----------
+// the table rows are made by student.php (from the database),
+// so this file only has to search and filter them
+var toast = document.getElementById("toast");
+var showingText = document.getElementById("showingText");
+var noMatchRow = document.getElementById("noMatchRow");
 
-        // ---------- 1. DATA ----------
-        // TODO: later get this list from the database (checkmate_db) with PHP
-        var students = [
-            { id: 1, name: "Juan Dela Cruz", studentId: "2025-62390", email: "juan@ncst.edu.ph",   course: "BSIT", year: "2nd Year", status: "Verified" },
-            { id: 2, name: "Maria Santos",    studentId: "2025-62931", email: "maria@ncst.edu.ph",  course: "BSCS", year: "2nd Year", status: "Verified" },
-            { id: 3, name: "Pedro Reyes",     studentId: "2025-60895", email: "pedro@ncst.edu.ph",  course: "BSE",  year: "3rd Year", status: "Verified" },
-            { id: 4, name: "Ana Lopez",       studentId: "2025-65417", email: "ana@ncst.edu.ph",    course: "BSIT", year: "1st Year", status: "Pending"  },
-            { id: 5, name: "Carlos Garcia",   studentId: "2025-11111", email: "carlos@ncst.edu.ph", course: "BSEE", year: "2nd Year", status: "Verified" }
-        ];
+var searchInput = document.getElementById("searchInput");
+var courseFilter = document.getElementById("courseFilter");
+var yearFilter = document.getElementById("yearFilter");
 
-
-        // ---------- 2. GET ELEMENTS ----------
-        var toast = document.getElementById("toast");
-        var studentsBody = document.getElementById("studentsBody");
-        var showingText = document.getElementById("showingText");
-
-        var searchInput = document.getElementById("searchInput");
-        var courseFilter = document.getElementById("courseFilter");
-        var yearFilter = document.getElementById("yearFilter");
-
-        var addModal = document.getElementById("addModal");
-        var formError = document.getElementById("formError");
+// every student row in the table
+var rows = document.querySelectorAll("#studentsBody tr.student-row");
 
 
-        // ---------- 3. TOAST ----------
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.add("show");
+// ---------- 2. TOAST ----------
+function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
 
-            setTimeout(function () {
-                toast.classList.remove("show");
-            }, 2500);
+    setTimeout(function () {
+        toast.classList.remove("show");
+    }, 2500);
+}
+
+
+// ---------- 3. SEARCH, FILTERS AND PAGES ----------
+var pagination = document.getElementById("pagination");
+
+// how many students are shown on one page
+var rowsPerPage = 10;
+
+// the page we are on right now (starts at page 1)
+var currentPage = 1;
+
+// the rows that match the search and filters (all pages together)
+var matchingRows = [];
+
+// step 1: find the rows that match the search box and the two filters
+function applyFilters() {
+
+    var searchText = searchInput.value.toLowerCase().trim();
+    var course = courseFilter.value;
+    var year = yearFilter.value;
+
+    // start with an empty list
+    matchingRows = [];
+
+    for (var i = 0; i < rows.length; i++) {
+
+        var row = rows[i];
+
+        // check the search box (name, student id or email)
+        var matchesSearch = true;
+        if (searchText !== "") {
+            matchesSearch = row.dataset.name.toLowerCase().indexOf(searchText) !== -1 ||
+                            row.dataset.studentid.toLowerCase().indexOf(searchText) !== -1 ||
+                            row.dataset.email.toLowerCase().indexOf(searchText) !== -1;
         }
 
+        // check the course filter
+        var matchesCourse = (course === "all" || row.dataset.course === course);
 
-        // ---------- 4. MAKE TEXT SAFE ----------
-        // so someone can't type html into the name box
-        function makeSafe(text) {
-            text = text.replace(/&/g, "&amp;");
-            text = text.replace(/</g, "&lt;");
-            text = text.replace(/>/g, "&gt;");
-            text = text.replace(/"/g, "&quot;");
-            return text;
+        // check the year level filter
+        var matchesYear = (year === "all" || row.dataset.year === year);
+
+        // only keep the row if all 3 are true
+        if (matchesSearch && matchesCourse && matchesYear) {
+            matchingRows.push(row);
         }
+    }
 
+    // a new search or filter always goes back to page 1
+    currentPage = 1;
+    showPage();
+}
 
-        // ---------- 5. SHOW THE TABLE ----------
-        // loops through the list and builds one row for each student
-        function showTable(list) {
+// step 2: show only the 10 rows that belong on the current page
+function showPage() {
 
-            var html = "";
+    var total = matchingRows.length;
 
-            for (var i = 0; i < list.length; i++) {
+    // how many pages we need (at least 1, even when there are no students)
+    var totalPages = Math.ceil(total / rowsPerPage);
+    if (totalPages === 0) {
+        totalPages = 1;
+    }
 
-                var s = list[i];
+    // safety: never go past the last page
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
 
-                // class name for the badge color (verified or pending)
-                var statusClass = s.status.toLowerCase();
+    // example: page 2 starts at index 10 and stops before index 20
+    var start = (currentPage - 1) * rowsPerPage;
+    var end = start + rowsPerPage;
 
-                html += "<tr>";
-                html += "<td><span class='cell-id'>" + s.id + "</span></td>";
-                html += "<td>" + makeSafe(s.name) + "</td>";
-                html += "<td>" + makeSafe(s.studentId) + "</td>";
-                html += "<td class='cell-muted'>" + makeSafe(s.email) + "</td>";
-                html += "<td>" + s.course + "</td>";
-                html += "<td>" + s.year + "</td>";
-                html += "<td><span class='status " + statusClass + "'>" + s.status + "</span></td>";
-                html += "<td>";
-                html += "<button class='action-btn' onclick='viewStudent(" + s.id + ")'>View</button>";
-                html += "<button class='action-btn' onclick='editStudent(" + s.id + ")'>Edit</button>";
-                html += "</td>";
-                html += "</tr>";
-            }
+    // hide every row first
+    for (var i = 0; i < rows.length; i++) {
+        rows[i].style.display = "none";
+    }
 
-            // if nothing matches, show a message
-            if (list.length === 0) {
-                html = "<tr class='empty-row'><td colspan='8'>No students found. Try a different search or filter.</td></tr>";
-                showingText.textContent = "Showing 0 of " + students.length + " students";
-            } else {
-                showingText.textContent = "Showing 1–" + list.length + " of " + list.length + " students";
-            }
+    // then show only the matching rows for this page
+    for (var j = start; j < end && j < total; j++) {
+        matchingRows[j].style.display = "";
+    }
 
-            studentsBody.innerHTML = html;
+    // show the "no students found" row when nothing matches
+    if (noMatchRow) {
+        if (total === 0) {
+            noMatchRow.style.display = "";
+        } else {
+            noMatchRow.style.display = "none";
         }
+    }
 
-
-        // ---------- 6. SEARCH AND FILTERS ----------
-        function applyFilters() {
-
-            var searchText = searchInput.value.toLowerCase().trim();
-            var course = courseFilter.value;
-            var year = yearFilter.value;
-
-            var result = [];
-
-            for (var i = 0; i < students.length; i++) {
-
-                var s = students[i];
-
-                // check the search box (name, student id or email)
-                var matchesSearch = true;
-                if (searchText !== "") {
-                    matchesSearch = s.name.toLowerCase().indexOf(searchText) !== -1 ||
-                                    s.studentId.toLowerCase().indexOf(searchText) !== -1 ||
-                                    s.email.toLowerCase().indexOf(searchText) !== -1;
-                }
-
-                // check the course filter
-                var matchesCourse = (course === "all" || s.course === course);
-
-                // check the year level filter
-                var matchesYear = (year === "all" || s.year === year);
-
-                // only keep the student if all 3 are true
-                if (matchesSearch && matchesCourse && matchesYear) {
-                    result.push(s);
-                }
-            }
-
-            showTable(result);
+    // update the text under the table (example: Showing 11–20 of 25 students)
+    if (total === 0) {
+        showingText.textContent = "Showing 0 of 0 students";
+    } else {
+        var lastShown = end;
+        if (lastShown > total) {
+            lastShown = total;
         }
+        showingText.textContent = "Showing " + (start + 1) + "–" + lastShown + " of " + total + " students";
+    }
 
-        searchInput.addEventListener("input", applyFilters);
-        courseFilter.addEventListener("change", applyFilters);
-        yearFilter.addEventListener("change", applyFilters);
+    buildPagination(totalPages);
+}
+
+// step 3: make the page buttons ( ‹  1  2  3  › )
+function buildPagination(totalPages) {
+
+    // clear the old buttons first
+    pagination.innerHTML = "";
+
+    // previous button (turned off on page 1)
+    var prevButton = document.createElement("button");
+    prevButton.className = "page-btn";
+    prevButton.textContent = "‹";
+    prevButton.disabled = (currentPage === 1);
+    prevButton.addEventListener("click", function () {
+        currentPage--;
+        showPage();
+    });
+    pagination.appendChild(prevButton);
+
+    // one button for each page number
+    // TODO: show "..." when there are a lot of pages
+    for (var p = 1; p <= totalPages; p++) {
+        pagination.appendChild(makePageButton(p));
+    }
+
+    // next button (turned off on the last page)
+    var nextButton = document.createElement("button");
+    nextButton.className = "page-btn";
+    nextButton.textContent = "›";
+    nextButton.disabled = (currentPage === totalPages);
+    nextButton.addEventListener("click", function () {
+        currentPage++;
+        showPage();
+    });
+    pagination.appendChild(nextButton);
+}
+
+// makes one numbered button (it is in its own function so every button remembers its own number)
+function makePageButton(pageNumber) {
+
+    var button = document.createElement("button");
+    button.className = "page-btn";
+    button.textContent = pageNumber;
+
+    // the page we are on gets the gold look
+    if (pageNumber === currentPage) {
+        button.className = "page-btn current";
+    }
+
+    button.addEventListener("click", function () {
+        currentPage = pageNumber;
+        showPage();
+    });
+
+    return button;
+}
+
+searchInput.addEventListener("input", applyFilters);
+courseFilter.addEventListener("change", applyFilters);
+yearFilter.addEventListener("change", applyFilters);
+
+// run it once when the page opens so only the first 10 students show
+applyFilters();
 
 
-        // ---------- 7. VIEW AND EDIT BUTTONS ----------
-        // find the student with the matching id
-        function findStudent(id) {
-            for (var i = 0; i < students.length; i++) {
-                if (students[i].id === id) {
-                    return students[i];
-                }
-            }
-            return null;
+// ---------- 4. VIEW AND EDIT BUTTONS ----------
+// the name and student id come from the data-* attributes of the row
+for (var i = 0; i < rows.length; i++) {
+
+    var viewButton = rows[i].querySelector(".view-btn");
+    var editButton = rows[i].querySelector(".edit-btn");
+
+    viewButton.addEventListener("click", function () {
+        var row = this.closest("tr");
+        // TODO: open a real student profile page
+        showToast("Viewing " + row.dataset.name + " (" + row.dataset.studentid + ")");
+    });
+
+    editButton.addEventListener("click", function () {
+        var row = this.closest("tr");
+        // TODO: open an edit form
+        showToast("Editing " + row.dataset.name + "...");
+    });
+}
+
+
+// ---------- 5. NOTIFICATION BUTTON ----------
+document.getElementById("notificationButton").addEventListener("click", function () {
+
+    // read the number from the red badge (there is no badge when it is 0)
+    var badge = document.querySelector(".notification-count");
+    var count = "0";
+
+    if (badge) {
+        count = badge.textContent.trim();
+    }
+
+    showToast("You have " + count + " pending reports.");
+});
+
+
+// ---------- 6. OTHER SIDEBAR LINKS ----------
+// the pages that don't exist yet just show a message
+var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
+
+for (var j = 0; j < sidebarLinks.length; j++) {
+    sidebarLinks[j].addEventListener("click", function (event) {
+        if (this.getAttribute("href") === "#") {
+            event.preventDefault();
+            showToast("That page is not built yet.");
         }
-
-        function viewStudent(id) {
-            var s = findStudent(id);
-            // TODO: open a real student profile page
-            showToast("Viewing " + s.name + " (" + s.studentId + ")");
-        }
-
-        function editStudent(id) {
-            var s = findStudent(id);
-            // TODO: open an edit form
-            showToast("Editing " + s.name + "...");
-        }
+    });
+}
 
 
-        // ---------- 8. ADD STUDENT POPUP ----------
-        document.getElementById("addStudentButton").addEventListener("click", function () {
-            formError.textContent = "";
-            addModal.classList.add("show");
-        });
-
-        document.getElementById("cancelAdd").addEventListener("click", function () {
-            addModal.classList.remove("show");
-        });
-
-        // clicking the dark area outside the box also closes it
-        addModal.addEventListener("click", function (event) {
-            if (event.target === addModal) {
-                addModal.classList.remove("show");
-            }
-        });
-
-        document.getElementById("saveAdd").addEventListener("click", function () {
-
-            var name = document.getElementById("newName").value.trim();
-            var studentId = document.getElementById("newStudentId").value.trim();
-            var email = document.getElementById("newEmail").value.trim().toLowerCase();
-            var course = document.getElementById("newCourse").value;
-            var year = document.getElementById("newYear").value;
-
-            // check that nothing is empty
-            if (name === "" || studentId === "" || email === "") {
-                formError.textContent = "Please fill in all the fields.";
-                return;
-            }
-
-            // student id must look like 2025-12345 (4 digits, dash, 5 digits)
-            var idPattern = /^\d{4}-\d{5}$/;
-            if (!idPattern.test(studentId)) {
-                formError.textContent = "Student ID must look like 2025-12345.";
-                return;
-            }
-
-            // email must be an NCST email
-            if (email.indexOf("@ncst.edu.ph") === -1 || email.indexOf("@ncst.edu.ph") !== email.length - 12) {
-                formError.textContent = "Please use an NCST email (@ncst.edu.ph).";
-                return;
-            }
-
-            // check if the student id is already in the list
-            for (var i = 0; i < students.length; i++) {
-                if (students[i].studentId === studentId) {
-                    formError.textContent = "That Student ID is already registered.";
-                    return;
-                }
-            }
-
-            // make the new student, new ones start as Pending
-            var newStudent = {
-                id: students.length + 1,
-                name: name,
-                studentId: studentId,
-                email: email,
-                course: course,
-                year: year,
-                status: "Pending"
-            };
-
-            students.push(newStudent);
-
-            // TODO: send this to PHP so it gets saved in the database
-
-            // clear the form and close the popup
-            document.getElementById("newName").value = "";
-            document.getElementById("newStudentId").value = "";
-            document.getElementById("newEmail").value = "";
-            addModal.classList.remove("show");
-
-            applyFilters();
-            showToast(name + " was added.");
-        });
-
-
-        // ---------- 9. NOTIFICATION BUTTON ----------
-        document.getElementById("notificationButton").addEventListener("click", function () {
-            showToast("You have 3 new notifications.");
-        });
-
-
-        // ---------- 10. OTHER SIDEBAR LINKS ----------
-        // the pages that don't exist yet just show a message
-        var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
-
-        for (var i = 0; i < sidebarLinks.length; i++) {
-            sidebarLinks[i].addEventListener("click", function (event) {
-                if (this.getAttribute("href") === "#") {
-                    event.preventDefault();
-                    showToast("That page is not built yet.");
-                }
-            });
-        }
-
-        // ---------- ACCOUNT MENU (3 dots) ----------
+// ---------- 7. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -269,8 +263,3 @@ document.addEventListener("keydown", function (event) {
         accountButton.classList.remove("open");
     }
 });
-
-
-        // ---------- 11. START ----------
-        // show all students when the page first loads
-        showTable(students);

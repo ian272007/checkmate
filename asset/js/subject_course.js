@@ -1,409 +1,461 @@
+// ---------- 1. DATA ----------
+// "courses", "subjects", "csrfToken" and "pendingReports" are created by subject_course.php
+// (the lists come straight from the database)
 
-        // ---------- 1. DATA ----------
-        // TODO: later get these lists from the database with PHP
-        var courses = [
-            { id: 1, name: "BS Information Technology", status: "Active"  },
-            { id: 2, name: "BS Computer Science",       status: "Active"  },
-            { id: 3, name: "BS Information Systems",    status: "Active"  },
-            { id: 4, name: "BS Engineering",            status: "Active"  },
-            { id: 5, name: "BS Architecture",           status: "Pending" }
-        ];
+var PER_PAGE = 10;
+var currentPage = 1;
 
-        var subjects = [
-            { id: 1, name: "CS101 - Data Structures",      course: "BS Computer Science",       status: "Active"  },
-            { id: 2, name: "CS102 - Algorithms",           course: "BS Computer Science",       status: "Active"  },
-            { id: 3, name: "IT102 - Web Development",      course: "BS Information Technology", status: "Active"  },
-            { id: 4, name: "IT103 - Software Engineering", course: "BS Information Technology", status: "Active"  },
-            { id: 5, name: "IS101 - Database Management",  course: "BS Information Systems",    status: "Pending" }
-        ];
+// which toggle is open: courses or subjects
+var currentTab = "courses";
 
-        // the id the next new item will get
-        var nextCourseId = 6;
-        var nextSubjectId = 6;
-
-        // which toggle is open: courses or subjects
-        var currentTab = "courses";
-
-        // when editing, this holds the id being edited (null = adding new)
-        var editingId = null;
+// when editing, this holds the id being edited (null = adding new)
+var editingId = null;
 
 
-        // ---------- 2. GET ELEMENTS ----------
-        var toast = document.getElementById("toast");
-        var tableHead = document.getElementById("tableHead");
-        var tableBody = document.getElementById("tableBody");
-        var showingText = document.getElementById("showingText");
+// ---------- 2. GET ELEMENTS ----------
+var toast = document.getElementById("toast");
+var tableHead = document.getElementById("tableHead");
+var tableBody = document.getElementById("tableBody");
+var showingText = document.getElementById("showingText");
+var pagination = document.getElementById("pagination");
 
-        var searchInput = document.getElementById("searchInput");
-        var statusFilter = document.getElementById("statusFilter");
-        var addButton = document.getElementById("addButton");
+var searchInput = document.getElementById("searchInput");
+var statusFilter = document.getElementById("statusFilter");
+var addButton = document.getElementById("addButton");
 
-        var formModal = document.getElementById("formModal");
-        var formError = document.getElementById("formError");
-        var formName = document.getElementById("formName");
-        var formCourse = document.getElementById("formCourse");
-        var formStatus = document.getElementById("formStatus");
+var formModal = document.getElementById("formModal");
+var formError = document.getElementById("formError");
+var formName = document.getElementById("formName");
+var formStatus = document.getElementById("formStatus");
+var saveButton = document.getElementById("saveForm");
 
 
-        // ---------- 3. TOAST ----------
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.add("show");
+// ---------- 3. TOAST ----------
+function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
 
-            setTimeout(function () {
-                toast.classList.remove("show");
-            }, 2500);
+    setTimeout(function () {
+        toast.classList.remove("show");
+    }, 2500);
+}
+
+
+// ---------- 4. SMALL HELPERS ----------
+
+// so html inside a name can't break the page
+function makeSafe(text) {
+    text = String(text == null ? "" : text);
+    text = text.replace(/&/g, "&amp;");
+    text = text.replace(/</g, "&lt;");
+    text = text.replace(/>/g, "&gt;");
+    text = text.replace(/"/g, "&quot;");
+    text = text.replace(/'/g, "&#39;");
+    return text;
+}
+
+// 1 becomes #001
+function formatId(number) {
+    if (number >= 100) {
+        return "#" + number;
+    }
+    return "#" + ("00" + number).slice(-3);
+}
+
+// the list for the toggle that is open
+function currentList() {
+    return currentTab === "courses" ? courses : subjects;
+}
+
+// "course" or "subject" (what the PHP file expects)
+function itemWord() {
+    return currentTab === "courses" ? "course" : "subject";
+}
+
+function capital(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function findItem(id) {
+    var list = currentList();
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) {
+            return list[i];
         }
+    }
+    return null;
+}
 
+// sends one request to subject_course_api.php
+function callApi(params, onDone) {
 
-        // ---------- 4. SMALL HELPERS ----------
+    var body = new URLSearchParams();
+    for (var key in params) {
+        body.append(key, params[key]);
+    }
+    body.append("csrf", csrfToken);
 
-        // so someone can't type html into the name box
-        function makeSafe(text) {
-            text = text.replace(/&/g, "&amp;");
-            text = text.replace(/</g, "&lt;");
-            text = text.replace(/>/g, "&gt;");
-            text = text.replace(/"/g, "&quot;");
-            return text;
-        }
-
-        // 1 becomes #001
-        function formatId(number) {
-            if (number >= 100) {
-                return "#" + number;
-            }
-            return "#" + ("00" + number).slice(-3);
-        }
-
-        // the list for the tab that is open
-        function currentList() {
-            return currentTab === "courses" ? courses : subjects;
-        }
-
-        function findItem(id) {
-            var list = currentList();
-            for (var i = 0; i < list.length; i++) {
-                if (list[i].id === id) {
-                    return list[i];
-                }
-            }
-            return null;
-        }
-
-        // the word used on buttons and messages
-        function itemWord() {
-            return currentTab === "courses" ? "course" : "subject";
-        }
-
-
-        // ---------- 5. SUMMARY CARDS ----------
-        function updateStats() {
-
-            var active = 0;
-            var pending = 0;
-            var all = courses.concat(subjects);
-
-            for (var i = 0; i < all.length; i++) {
-                if (all[i].status === "Active") { active++; }
-                if (all[i].status === "Pending") { pending++; }
-            }
-
-            document.getElementById("statCourses").textContent = courses.length;
-            document.getElementById("statSubjects").textContent = subjects.length;
-            document.getElementById("statActive").textContent = active;
-            document.getElementById("statPending").textContent = pending;
-        }
-
-
-        // ---------- 6. SHOW THE TABLE ----------
-        function showTable() {
-
-            var list = currentList();
-            var searchText = searchInput.value.toLowerCase().trim();
-            var status = statusFilter.value;
-            var result = [];
-
-            // search + status filter
-            for (var i = 0; i < list.length; i++) {
-
-                var item = list[i];
-
-                var matchesSearch = true;
-                if (searchText !== "") {
-                    matchesSearch = item.name.toLowerCase().indexOf(searchText) !== -1;
-                    if (currentTab === "subjects" && item.course.toLowerCase().indexOf(searchText) !== -1) {
-                        matchesSearch = true;
-                    }
-                }
-
-                var matchesStatus = (status === "all" || item.status === status);
-
-                if (matchesSearch && matchesStatus) {
-                    result.push(item);
-                }
-            }
-
-            // table heading changes with the toggle
-            if (currentTab === "courses") {
-                tableHead.innerHTML = "<tr><th>ID</th><th>Course Name</th><th>Status</th><th>Actions</th></tr>";
-            } else {
-                tableHead.innerHTML = "<tr><th>ID</th><th>Subject Name</th><th>Course</th><th>Status</th><th>Actions</th></tr>";
-            }
-
-            var html = "";
-
-            for (var j = 0; j < result.length; j++) {
-
-                var r = result[j];
-
-                html += "<tr>";
-                html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
-                html += "<td>" + makeSafe(r.name) + "</td>";
-
-                if (currentTab === "subjects") {
-                    html += "<td class='cell-muted'>" + makeSafe(r.course) + "</td>";
-                }
-
-                html += "<td><span class='status " + r.status.toLowerCase() + "'>" + r.status + "</span></td>";
-                html += "<td>";
-                html += "<button class='action-btn' onclick='viewItem(" + r.id + ")'>View</button>";
-                html += "<button class='action-btn' onclick='openForm(" + r.id + ")'>Edit</button>";
-                html += "<button class='action-btn delete' onclick='deleteItem(" + r.id + ")'>Delete</button>";
-                html += "</td>";
-                html += "</tr>";
-            }
-
-            var columns = (currentTab === "courses") ? 4 : 5;
-
-            if (result.length === 0) {
-                html = "<tr class='empty-row'><td colspan='" + columns + "'>No " + itemWord() + "s found. Try a different search or filter.</td></tr>";
-                showingText.textContent = "Showing 0 of " + list.length + " " + itemWord() + "s";
-            } else {
-                showingText.textContent = "Showing 1–" + result.length + " of " + result.length + " " + itemWord() + "s";
-            }
-
-            tableBody.innerHTML = html;
-        }
-
-        searchInput.addEventListener("input", showTable);
-        statusFilter.addEventListener("change", showTable);
-
-
-        // ---------- 7. TOGGLE (COURSES / SUBJECTS) ----------
-        function setTab(name) {
-
-            currentTab = name;
-
-            var buttons = document.querySelectorAll(".toggle-btn");
-            for (var i = 0; i < buttons.length; i++) {
-                if (buttons[i].getAttribute("data-tab") === name) {
-                    buttons[i].classList.add("active");
-                } else {
-                    buttons[i].classList.remove("active");
-                }
-            }
-
-            // search box and add button use the right word
-            var word = itemWord();
-            searchInput.placeholder = "Search " + word + "s...";
-            addButton.textContent = "+ Add " + word.charAt(0).toUpperCase() + word.slice(1);
-
-            searchInput.value = "";
-            statusFilter.value = "all";
-
-            showTable();
-        }
-
-        var toggleButtons = document.querySelectorAll(".toggle-btn");
-        for (var t = 0; t < toggleButtons.length; t++) {
-            toggleButtons[t].addEventListener("click", function () {
-                setTab(this.getAttribute("data-tab"));
-            });
-        }
-
-        // clicking a summary card opens the matching view
-        var statCards = document.querySelectorAll(".stat-card");
-        for (var s = 0; s < statCards.length; s++) {
-            statCards[s].addEventListener("click", function () {
-                var jump = this.getAttribute("data-jump");
-
-                if (jump === "courses" || jump === "subjects") {
-                    setTab(jump);
-                } else {
-                    // Active / Pending: filter the table that is open
-                    statusFilter.value = jump;
-                    showTable();
-                }
-            });
-        }
-
-
-        // ---------- 8. VIEW AND DELETE ----------
-        function viewItem(id) {
-            var item = findItem(id);
-            // TODO: open a real details page
-            var extra = (currentTab === "subjects") ? " (" + item.course + ")" : "";
-            showToast(formatId(item.id) + ": " + item.name + extra + " - " + item.status);
-        }
-
-        function deleteItem(id) {
-            var item = findItem(id);
-
-            // ask first so nothing gets deleted by accident
-            var sure = confirm("Delete " + itemWord() + " " + formatId(item.id) + "?\n\n" + item.name);
-
-            if (sure === false) {
-                return;
-            }
-
-            var list = currentList();
-            var newList = [];
-            for (var i = 0; i < list.length; i++) {
-                if (list[i].id !== id) {
-                    newList.push(list[i]);
-                }
-            }
-
-            if (currentTab === "courses") {
-                courses = newList;
-            } else {
-                subjects = newList;
-            }
-
-            // TODO: also delete it from the database with PHP
-
-            updateStats();
-            showTable();
-            showToast(formatId(id) + " was deleted.");
-        }
-
-
-        // ---------- 9. ADD / EDIT POPUP ----------
-        // openForm() with no id = add new, openForm(id) = edit that one
-        function openForm(id) {
-
-            var word = itemWord();
-            var Word = word.charAt(0).toUpperCase() + word.slice(1);
-
-            editingId = (id === undefined) ? null : id;
-            formError.textContent = "";
-
-            document.getElementById("modalLabel").textContent = word.toUpperCase() + "S";
-            document.getElementById("nameLabel").textContent = Word + " name";
-            formName.placeholder = (currentTab === "courses") ? "BS Information Technology" : "CS101 - Data Structures";
-
-            // subjects also pick a course
-            var courseGroup = document.getElementById("courseGroup");
-            if (currentTab === "subjects") {
-                courseGroup.style.display = "block";
-                var options = "";
-                for (var i = 0; i < courses.length; i++) {
-                    options += "<option value=\"" + makeSafe(courses[i].name) + "\">" + makeSafe(courses[i].name) + "</option>";
-                }
-                formCourse.innerHTML = options;
-            } else {
-                courseGroup.style.display = "none";
-            }
-
-            if (editingId === null) {
-                document.getElementById("modalTitle").textContent = "Add " + word;
-                document.getElementById("saveForm").textContent = "Add " + Word;
-                formName.value = "";
-                formStatus.value = "Active";
-            } else {
-                var item = findItem(editingId);
-                document.getElementById("modalTitle").textContent = "Edit " + word;
-                document.getElementById("saveForm").textContent = "Save Changes";
-                formName.value = item.name;
-                formStatus.value = item.status;
-                if (currentTab === "subjects") {
-                    formCourse.value = item.course;
-                }
-            }
-
-            formModal.classList.add("show");
-        }
-
-        addButton.addEventListener("click", function () {
-            openForm();
+    fetch("subject_course_api.php", { method: "POST", body: body })
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+            onDone(data);
+        })
+        .catch(function () {
+            onDone({ success: false, message: "Something went wrong. Please try again." });
         });
+}
 
-        document.getElementById("cancelForm").addEventListener("click", function () {
-            formModal.classList.remove("show");
-        });
+// builds the ‹ 1 2 3 › buttons
+function buildPagination(total) {
 
-        // clicking the dark area outside the box also closes it
-        formModal.addEventListener("click", function (event) {
-            if (event.target === formModal) {
-                formModal.classList.remove("show");
-            }
-        });
+    var pages = Math.ceil(total / PER_PAGE);
+    pagination.innerHTML = "";
 
-        document.getElementById("saveForm").addEventListener("click", function () {
+    if (pages <= 1) {
+        return;
+    }
 
-            var name = formName.value.trim();
-            var status = formStatus.value;
-
-            // check that nothing is empty
-            if (name === "") {
-                formError.textContent = "Please enter the " + itemWord() + " name.";
-                return;
-            }
-
-            if (editingId === null) {
-
-                // new items start with the status picked in the popup
-                if (currentTab === "courses") {
-                    courses.push({ id: nextCourseId, name: name, status: status });
-                    nextCourseId = nextCourseId + 1;
-                } else {
-                    subjects.push({ id: nextSubjectId, name: name, course: formCourse.value, status: status });
-                    nextSubjectId = nextSubjectId + 1;
-                }
-
-                // TODO: send this to PHP so it gets saved in the database
-                showToast(itemWord().charAt(0).toUpperCase() + itemWord().slice(1) + " added.");
-
-            } else {
-
-                var item = findItem(editingId);
-                item.name = name;
-                item.status = status;
-                if (currentTab === "subjects") {
-                    item.course = formCourse.value;
-                }
-
-                // TODO: send this change to PHP so it gets saved in the database
-                showToast(formatId(editingId) + " was updated.");
-            }
-
-            formModal.classList.remove("show");
-
-            updateStats();
+    function addPageButton(label, targetPage, isCurrent, isDisabled) {
+        var btn = document.createElement("button");
+        btn.className = "page-btn" + (isCurrent ? " current" : "");
+        btn.textContent = label;
+        btn.disabled = isDisabled;
+        btn.addEventListener("click", function () {
+            currentPage = targetPage;
             showTable();
         });
+        pagination.appendChild(btn);
+    }
+
+    addPageButton("‹", currentPage - 1, false, currentPage === 1);
+
+    var start = Math.max(1, currentPage - 2);
+    var end = Math.min(pages, start + 4);
+    start = Math.max(1, end - 4);
+
+    for (var p = start; p <= end; p++) {
+        addPageButton(String(p), p, p === currentPage, false);
+    }
+
+    addPageButton("›", currentPage + 1, false, currentPage === pages);
+}
 
 
-        // ---------- 10. NOTIFICATION BUTTON ----------
-        document.getElementById("notificationButton").addEventListener("click", function () {
-            showToast("You have 3 new notifications.");
-        });
+// ---------- 5. SUMMARY CARDS ----------
+function updateStats() {
+
+    var active = 0;
+    var inactive = 0;
+    var all = courses.concat(subjects);
+
+    for (var i = 0; i < all.length; i++) {
+        if (all[i].status === "Active") { active++; }
+        else { inactive++; }
+    }
+
+    document.getElementById("statCourses").textContent = courses.length;
+    document.getElementById("statSubjects").textContent = subjects.length;
+    document.getElementById("statActive").textContent = active;
+    document.getElementById("statInactive").textContent = inactive;
+}
 
 
-        // ---------- 11. OTHER SIDEBAR LINKS ----------
-        // the pages that don't exist yet just show a message
-        var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
+// ---------- 6. SHOW THE TABLE ----------
+function showTable() {
 
-        for (var i = 0; i < sidebarLinks.length; i++) {
-            sidebarLinks[i].addEventListener("click", function (event) {
-                if (this.getAttribute("href") === "#") {
-                    event.preventDefault();
-                    showToast("That page is not built yet.");
-                }
-            });
+    var list = currentList();
+    var searchText = searchInput.value.toLowerCase().trim();
+    var status = statusFilter.value;
+    var result = [];
+
+    // search + status filter
+    for (var i = 0; i < list.length; i++) {
+
+        var item = list[i];
+
+        var matchesSearch = (searchText === "" || item.name.toLowerCase().indexOf(searchText) !== -1);
+        var matchesStatus = (status === "all" || item.status === status);
+
+        if (matchesSearch && matchesStatus) {
+            result.push(item);
+        }
+    }
+
+    // make sure the page number is valid
+    var pages = Math.max(1, Math.ceil(result.length / PER_PAGE));
+    if (currentPage > pages) { currentPage = pages; }
+    if (currentPage < 1) { currentPage = 1; }
+
+    var from = (currentPage - 1) * PER_PAGE;
+    var to = Math.min(from + PER_PAGE, result.length);
+
+    var word = itemWord();
+
+    tableHead.innerHTML = "<tr><th>ID</th><th>" + capital(word) + " Name</th><th>Questions</th><th>Status</th><th>Actions</th></tr>";
+
+    var html = "";
+
+    for (var j = from; j < to; j++) {
+
+        var r = result[j];
+        var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        html += "<tr>";
+        html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
+        html += "<td>" + makeSafe(r.name) + "</td>";
+        html += "<td class='cell-muted'>" + r.used + "</td>";
+        html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
+        html += "<td>";
+        html += "<button class='action-btn' onclick='openForm(" + r.id + ")'>Edit</button>";
+        html += "<button class='action-btn delete' onclick='deleteItem(" + r.id + ")'>Delete</button>";
+        html += "</td>";
+        html += "</tr>";
+    }
+
+    if (result.length === 0) {
+        html = "<tr class='empty-row'><td colspan='5'>No " + word + "s found. Try a different search or filter.</td></tr>";
+        showingText.textContent = "Showing 0 of " + list.length + " " + word + "s";
+    } else {
+        showingText.textContent = "Showing " + (from + 1) + "–" + to + " of " + result.length + " " + word + "s";
+    }
+
+    tableBody.innerHTML = html;
+
+    buildPagination(result.length);
+}
+
+searchInput.addEventListener("input", function () {
+    currentPage = 1;
+    showTable();
+});
+
+statusFilter.addEventListener("change", function () {
+    currentPage = 1;
+    showTable();
+});
+
+
+// ---------- 7. TOGGLE (COURSES / SUBJECTS) ----------
+function setTab(name) {
+
+    currentTab = name;
+    currentPage = 1;
+
+    var buttons = document.querySelectorAll(".toggle-btn");
+    for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].getAttribute("data-tab") === name) {
+            buttons[i].classList.add("active");
+        } else {
+            buttons[i].classList.remove("active");
+        }
+    }
+
+    var word = itemWord();
+    searchInput.placeholder = "Search " + word + "s...";
+    addButton.textContent = "+ Add " + capital(word);
+
+    searchInput.value = "";
+    statusFilter.value = "all";
+
+    showTable();
+}
+
+var toggleButtons = document.querySelectorAll(".toggle-btn");
+for (var t = 0; t < toggleButtons.length; t++) {
+    toggleButtons[t].addEventListener("click", function () {
+        setTab(this.getAttribute("data-tab"));
+    });
+}
+
+// clicking a summary card opens the matching view
+var statCards = document.querySelectorAll(".stat-card");
+for (var s = 0; s < statCards.length; s++) {
+    statCards[s].addEventListener("click", function () {
+        var jump = this.getAttribute("data-jump");
+
+        if (jump === "courses" || jump === "subjects") {
+            setTab(jump);
+        } else {
+            // Active / Inactive: filter the table that is open
+            statusFilter.value = jump;
+            currentPage = 1;
+            showTable();
+        }
+    });
+}
+
+
+// ---------- 8. DELETE ----------
+function deleteItem(id) {
+
+    var item = findItem(id);
+    if (item === null) {
+        return;
+    }
+
+    var word = itemWord();
+    var message = "Delete " + word + " " + formatId(item.id) + "?\n\n" + item.name;
+
+    if (item.used > 0) {
+        message += "\n\n" + item.used + " question(s) already use this " + word + ". " +
+                   "They will keep the name, but it will no longer be in the list.\n" +
+                   "Tip: set it to Inactive instead if you only want to hide it.";
+    }
+
+    if (confirm(message) === false) {
+        return;
+    }
+
+    callApi({ action: "delete", type: word, id: id }, function (data) {
+
+        if (!data.success) {
+            showToast(data.message);
+            return;
         }
 
-        // ---------- ACCOUNT MENU (3 dots) ----------
+        var list = currentList();
+        var newList = [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id !== id) {
+                newList.push(list[i]);
+            }
+        }
+
+        if (currentTab === "courses") {
+            courses = newList;
+        } else {
+            subjects = newList;
+        }
+
+        updateStats();
+        showTable();
+        showToast(capital(word) + " " + formatId(id) + " was deleted.");
+    });
+}
+
+
+// ---------- 9. ADD / EDIT POPUP ----------
+// openForm() with no id = add new, openForm(id) = edit that one
+function openForm(id) {
+
+    var word = itemWord();
+
+    editingId = (id === undefined) ? null : id;
+    formError.textContent = "";
+
+    document.getElementById("modalLabel").textContent = word.toUpperCase() + "S";
+    document.getElementById("nameLabel").textContent = capital(word) + " name";
+    formName.placeholder = (currentTab === "courses") ? "BSIT" : "Web Development";
+
+    if (editingId === null) {
+        document.getElementById("modalTitle").textContent = "Add " + word;
+        saveButton.textContent = "Add " + capital(word);
+        formName.value = "";
+        formStatus.value = "Active";
+    } else {
+        var item = findItem(editingId);
+        document.getElementById("modalTitle").textContent = "Edit " + word;
+        saveButton.textContent = "Save Changes";
+        formName.value = item.name;
+        formStatus.value = item.status;
+    }
+
+    formModal.classList.add("show");
+    formName.focus();
+}
+
+addButton.addEventListener("click", function () {
+    openForm();
+});
+
+document.getElementById("cancelForm").addEventListener("click", function () {
+    formModal.classList.remove("show");
+});
+
+// clicking the dark area outside the box also closes it
+formModal.addEventListener("click", function (event) {
+    if (event.target === formModal) {
+        formModal.classList.remove("show");
+    }
+});
+
+saveButton.addEventListener("click", function () {
+
+    var word = itemWord();
+    var name = formName.value.trim();
+    var status = formStatus.value;
+
+    if (name === "") {
+        formError.textContent = "Please enter the " + word + " name.";
+        return;
+    }
+
+    var params = { type: word, name: name, status: status };
+
+    if (editingId === null) {
+        params.action = "add";
+    } else {
+        params.action = "update";
+        params.id = editingId;
+    }
+
+    // stop double clicks while waiting for PHP
+    saveButton.disabled = true;
+
+    callApi(params, function (data) {
+
+        saveButton.disabled = false;
+
+        if (!data.success) {
+            formError.textContent = data.message;
+            return;
+        }
+
+        if (editingId === null) {
+            currentList().push(data.item);
+            showToast(capital(word) + " added.");
+        } else {
+            var item = findItem(editingId);
+            item.name = data.item.name;
+            item.status = data.item.status;
+            item.used = data.item.used;
+            showToast(capital(word) + " " + formatId(editingId) + " was updated.");
+        }
+
+        formModal.classList.remove("show");
+
+        updateStats();
+        showTable();
+    });
+});
+
+
+// ---------- 10. NOTIFICATION BUTTON ----------
+document.getElementById("notificationButton").addEventListener("click", function () {
+    if (pendingReports > 0) {
+        showToast("You have " + pendingReports + " pending report(s).");
+    } else {
+        showToast("No new notifications.");
+    }
+});
+
+
+// ---------- 11. OTHER SIDEBAR LINKS ----------
+var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
+
+for (var i = 0; i < sidebarLinks.length; i++) {
+    sidebarLinks[i].addEventListener("click", function (event) {
+        if (this.getAttribute("href") === "#") {
+            event.preventDefault();
+            showToast("That page is not built yet.");
+        }
+    });
+}
+
+
+// ---------- 12. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -413,7 +465,6 @@ accountButton.addEventListener("click", function (event) {
     accountButton.classList.toggle("open");
 });
 
-// clicking anywhere else (or pressing Esc) closes it
 document.addEventListener("click", function () {
     accountMenu.classList.remove("show");
     accountButton.classList.remove("open");
@@ -427,6 +478,6 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-        // ---------- 12. START ----------
-        updateStats();
-        showTable();
+// ---------- 13. START ----------
+updateStats();
+showTable();

@@ -223,8 +223,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt = $conn->prepare(
             "INSERT INTO questions
              (user_id, question, status, create_at,
-              subject, question_course, question_type, attachment)
-             VALUES (?, ?, 'Active', NOW(), ?, ?, ?, ?)"
+             subject, question_course, question_type, attachment)
+            VALUES (?, ?, 'Active', NOW(), ?, ?, ?, ?)"
         );
 
         if (!$stmt) {
@@ -270,21 +270,21 @@ $questions = [];
 
 $stmt = $conn->prepare(
     "SELECT
-        q.question_id,
-        q.question,
-        q.create_at,
-        q.subject,
-        q.question_course,
-        q.question_type,
-        q.attachment,
-        u.first_name,
-        u.last_name,
-        u.student_id
-     FROM questions q
-     INNER JOIN users u ON q.user_id = u.id
-     WHERE q.status = 'Active'
-       AND q.user_id <> ?
-     ORDER BY q.create_at DESC"
+    q.question_id,
+    q.question,
+    q.create_at,
+    q.subject,
+    q.question_course,
+    q.question_type,
+    q.attachment,
+    u.first_name,
+    u.last_name,
+    u.student_id
+FROM questions q
+INNER JOIN users u ON q.user_id = u.id
+WHERE q.status = 'Active'
+  AND q.user_id <> ?
+ORDER BY q.create_at DESC"
 );
 
 if (!$stmt) {
@@ -355,8 +355,9 @@ $displayName = trim(
     >
     <script src="../../asset/js/notify.js" defer></script>
     <script src="../../asset/js/user_menu.js" defer></script>
-    <link rel="stylesheet" href="../../asset/css/question.css">
-    <link rel="stylesheet" href="../../asset/css/question_answer.css">
+    <!-- filemtime() gives the time the file was last saved, so the link changes when the file changes -->
+<link rel="stylesheet" href="../../asset/css/question.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question.css') ?>">
+<link rel="stylesheet" href="../../asset/css/question_answer.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question_answer.css') ?>">
 </head>
 
 <body>
@@ -427,8 +428,8 @@ $displayName = trim(
             </strong>
 
             <span>
-                <?= e($user["course"] ?? "") ?>
-                ·
+                <?= e($user["course"] ?? "") ?><br>
+               
                 <?= e($user["student_id"] ?? "") ?>
             </span>
         </div>
@@ -767,7 +768,7 @@ $displayName = trim(
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../../asset/js/question.js"></script>
+<script src="../../asset/js/question.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question.js') ?>"></script>
 
 </body>
 </html>

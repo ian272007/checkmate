@@ -1,3 +1,56 @@
+<?php
+session_start();
+require "../../config/config.php";   // your connection file
+
+// make mysqli throw real errors and read text correctly
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$conn->set_charset("utf8mb4");
+
+// only admins can open this page
+// (CHANGE 'role' and the login path if yours are different)
+if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: ../../authentication/Login/login.php");
+    exit;
+}
+
+// token used to protect add / edit / delete
+if (empty($_SESSION["csrf"])) {
+    $_SESSION["csrf"] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION["csrf"];
+
+// ---------- courses (with how many questions use each one) ----------
+$courses = [];
+$result = $conn->query(
+    "SELECT c.id, c.course_name AS name, c.status,
+            (SELECT COUNT(*) FROM questions q WHERE q.question_course = c.course_name) AS used
+     FROM question_courses c
+     ORDER BY c.id"
+);
+while ($row = $result->fetch_assoc()) {
+    $row["id"] = (int) $row["id"];
+    $row["used"] = (int) $row["used"];
+    $courses[] = $row;
+}
+
+// ---------- subjects (with how many questions use each one) ----------
+$subjects = [];
+$result = $conn->query(
+    "SELECT s.id, s.subject_name AS name, s.status,
+            (SELECT COUNT(*) FROM questions q WHERE q.subject = s.subject_name) AS used
+     FROM question_subjects s
+     ORDER BY s.id"
+);
+while ($row = $result->fetch_assoc()) {
+    $row["id"] = (int) $row["id"];
+    $row["used"] = (int) $row["used"];
+    $subjects[] = $row;
+}
+
+// ---------- sidebar numbers ----------
+$studentCount = (int) $conn->query("SELECT COUNT(*) AS c FROM users WHERE role = 'student'")->fetch_assoc()["c"];
+$pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE status = 'Pending'")->fetch_assoc()["c"];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,10 +59,8 @@
 
     <title>CHECKMATE - Subjects & Courses</title>
 
-    <!-- Same stylesheet as the other admin pages -->
-         <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/subject_course.css">
-
+    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/subject_course.css?v=<?= filemtime(__DIR__ . '/../../asset/css/subject_course.css') ?>">
 </head>
 
 <body>
@@ -20,26 +71,22 @@
 
     <aside class="sidebar">
 
-        <!-- Logo -->
         <div class="logo">
             <span>♞</span>
             CHECKMATE
         </div>
 
-        <!-- Account Type -->
         <div class="admin-label">
             ADMINISTRATION
         </div>
 
-
-        <!-- OVERVIEW MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
                 OVERVIEW
             </div>
 
-          <ul class="sidebar-menu">
+            <ul class="sidebar-menu">
 
                 <li>
                     <a href="admin_home.php" data-page="dashboard">
@@ -52,7 +99,7 @@
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <span class="menu-count"><?= $studentCount ?></span>
                     </a>
                 </li>
 
@@ -72,11 +119,8 @@
 
             </ul>
 
-
         </div>
 
-
-        <!-- MANAGEMENT MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -86,7 +130,6 @@
             <ul class="sidebar-menu">
 
                 <li>
-                    <!-- this is the current page so it is active -->
                     <a href="subject_course.php" class="active" data-page="subjects">
                         <span class="menu-icon">◇</span>
                         <span>Subjects & Courses</span>
@@ -104,7 +147,9 @@
                     <a href="report.php" data-page="reports">
                         <span class="menu-icon">▤</span>
                         <span>Reports</span>
-                        <span class="menu-dot"></span>
+                        <?php if ($pendingReports > 0): ?>
+                            <span class="menu-dot"></span>
+                        <?php endif; ?>
                     </a>
                 </li>
 
@@ -112,44 +157,41 @@
 
         </div>
 
-
         <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-       <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
 
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
     </aside>
 
 
@@ -159,7 +201,6 @@
 
     <main class="main">
 
-        <!-- TOP BAR -->
         <header class="topbar">
 
             <div class="topbar-left">
@@ -180,24 +221,21 @@
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pendingReports > 0): ?>
+                        <span class="notification-count"><?= $pendingReports ?></span>
+                    <?php endif; ?>
 
                 </button>
-
 
             </div>
 
         </header>
 
 
-        <!-- PAGE CONTENT -->
         <section class="content">
 
             <!-- Summary cards -->
@@ -230,11 +268,11 @@
                     <div class="stat-arrow">→</div>
                 </div>
 
-                <div class="stat-card" data-jump="Pending">
-                    <div class="stat-icon">◔</div>
+                <div class="stat-card" data-jump="Inactive">
+                    <div class="stat-icon red">✕</div>
                     <div class="stat-info">
-                        <div class="stat-label">Pending</div>
-                        <div class="stat-number" id="statPending">0</div>
+                        <div class="stat-label">Inactive</div>
+                        <div class="stat-number" id="statInactive">0</div>
                     </div>
                     <div class="stat-arrow">→</div>
                 </div>
@@ -261,7 +299,7 @@
                 <select id="statusFilter" class="filter-select">
                     <option value="all">All Status</option>
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
+                    <option value="Inactive">Inactive</option>
                 </select>
 
                 <button class="btn-gold" id="addButton">+ Add Course</button>
@@ -278,7 +316,7 @@
 
                         <thead id="tableHead"></thead>
 
-                        <!-- rows are filled in by the JavaScript below -->
+                        <!-- rows are filled in by subject_course.js -->
                         <tbody id="tableBody"></tbody>
 
                     </table>
@@ -287,13 +325,7 @@
 
                 <div class="panel-footer">
                     <div class="showing-text" id="showingText"></div>
-
-                    <!-- TODO: make pagination work when there are more items -->
-                    <div class="pagination">
-                        <button class="page-btn">‹</button>
-                        <button class="page-btn current">1</button>
-                        <button class="page-btn">›</button>
-                    </div>
+                    <div class="pagination" id="pagination"></div>
                 </div>
 
             </div>
@@ -316,24 +348,17 @@
 
             <div class="form-group">
                 <label for="formName" id="nameLabel">Course name</label>
-                <input type="text" id="formName" class="form-input" placeholder="BS Information Technology">
-            </div>
-
-            <!-- only shown for subjects: which course the subject belongs to -->
-            <div class="form-group" id="courseGroup" style="display:none;">
-                <label for="formCourse">Course</label>
-                <select id="formCourse" class="filter-select"></select>
+                <input type="text" id="formName" class="form-input" maxlength="100" placeholder="BSIT">
             </div>
 
             <div class="form-group">
                 <label for="formStatus">Status</label>
                 <select id="formStatus" class="filter-select">
                     <option value="Active">Active</option>
-                    <option value="Pending">Pending</option>
+                    <option value="Inactive">Inactive</option>
                 </select>
             </div>
 
-            <!-- error message shows here -->
             <div class="form-error" id="formError"></div>
 
             <div class="modal-buttons">
@@ -346,14 +371,17 @@
     </div>
 
 
-    <!-- TOAST MESSAGE (styled in style.css) -->
     <div class="toast" id="toast"></div>
 
+    <!-- data from the database, used by subject_course.js -->
+    <script>
+        var courses = <?= json_encode($courses, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+        var subjects = <?= json_encode($subjects, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+        var csrfToken = <?= json_encode($csrf) ?>;
+        var pendingReports = <?= $pendingReports ?>;
+    </script>
 
-    <!-- =========================================
-         JAVASCRIPT
-         ========================================= -->
-        <script src="../../asset/js/subject_course.js"></script>
+    <script src="../../asset/js/subject_course.js"></script>
 
 </body>
 </html>

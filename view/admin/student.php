@@ -1,3 +1,86 @@
+<?php
+session_start();
+
+// if not logged in as admin, go to the login page
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
+    header("Location: /checkmate/authentication/Login/login.php");
+    exit();
+}
+
+// connect to the database (gives us the $conn variable)
+require_once "../../config/config.php";
+
+
+/* =========================================
+   SMALL HELPER FUNCTIONS
+   ========================================= */
+
+// makes text safe to print inside HTML
+function e($value)
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, "UTF-8");
+}
+
+// runs a "SELECT COUNT(*)" query and returns the number
+function getCount($conn, $sql)
+{
+    $result = $conn->query($sql);
+
+    // if the query failed, just show 0 instead of crashing the page
+    if (!$result) {
+        return 0;
+    }
+
+    $row = $result->fetch_row();
+    return (int)$row[0];
+}
+
+
+/* =========================================
+   GET THE STUDENTS FROM THE DATABASE
+   ========================================= */
+
+// role = 'student' means admins are never listed on this page
+$sql = "SELECT id, first_name, last_name, student_id, email, course, year_level
+        FROM users
+        WHERE role = 'student'
+        ORDER BY id ASC";
+
+$result = $conn->query($sql);
+
+$students = [];
+
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $students[] = $row;
+    }
+}
+
+$total_students = count($students);
+
+// make the Course dropdown from the courses the students really have
+$courses = [];
+
+foreach ($students as $s) {
+    if (!in_array($s["course"], $courses)) {
+        $courses[] = $s["course"];
+    }
+}
+
+sort($courses);
+
+// pending reports number for the bell (same as the dashboard)
+$pending_reports = 0;
+$check = $conn->query("SHOW TABLES LIKE 'reports'");
+
+if ($check && $check->num_rows > 0) {
+    $pending_reports = getCount($conn, "SELECT COUNT(*) FROM reports WHERE status = 'Pending'");
+}
+
+// we have everything we need, so close the connection
+$conn->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +89,10 @@
 
     <title>CHECKMATE - Students</title>
 
-    <!-- Same stylesheet as the dashboard (sidebar, topbar, toast, etc.) -->
-     <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/student.css">
+    <!-- filemtime() is the time the file was last saved, so the link changes whenever you edit the file
+         (this stops the browser from showing an old cached copy) -->
+    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/student.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student.css') ?>">
 </head>
 
 <body>
@@ -51,7 +135,8 @@
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <!-- real number of students now -->
+                        <span class="menu-count"><?= $total_students ?></span>
                     </a>
                 </li>
 
@@ -111,42 +196,41 @@
 
 
         <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <!-- three dots (vertical) on the right side of the profile -->
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <!-- menu that opens when the 3 dots are clicked -->
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
-
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
 
     </aside>
 
@@ -174,18 +258,18 @@
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
+                <!-- Notifications (the number is the pending reports) -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pending_reports > 0): ?>
+                        <span class="notification-count">
+                            <?= $pending_reports ?>
+                        </span>
+                    <?php endif; ?>
 
                 </button>
-
-             
 
             </div>
 
@@ -195,7 +279,7 @@
         <!-- PAGE CONTENT -->
         <section class="content">
 
-            <!-- Search, filters and add button -->
+            <!-- Search and filters (the Add Student button was deleted) -->
             <div class="toolbar">
 
                 <div class="search-box">
@@ -206,10 +290,10 @@
 
                 <select id="courseFilter" class="filter-select">
                     <option value="all">All Courses</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="BSCS">BSCS</option>
-                    <option value="BSE">BSE</option>
-                    <option value="BSEE">BSEE</option>
+
+                    <?php foreach ($courses as $course): ?>
+                        <option value="<?= e($course) ?>"><?= e($course) ?></option>
+                    <?php endforeach; ?>
                 </select>
 
                 <select id="yearFilter" class="filter-select">
@@ -220,12 +304,10 @@
                     <option value="4th Year">4th Year</option>
                 </select>
 
-                <button class="btn-gold" id="addStudentButton">+ Add Student</button>
-
             </div>
 
 
-            <!-- Students table -->
+            <!-- Students table (the Status column was deleted) -->
             <div class="table-wrap">
 
                 <table class="students-table">
@@ -238,13 +320,56 @@
                             <th>Email</th>
                             <th>Course</th>
                             <th>Year Level</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            
                         </tr>
                     </thead>
 
-                    <!-- rows are filled in by the JavaScript below -->
-                    <tbody id="studentsBody"></tbody>
+                    <tbody id="studentsBody">
+
+                        <?php if ($total_students == 0): ?>
+
+                            <!-- no student accounts in the database yet -->
+                            <tr class="empty-row">
+                                <td colspan="7">No students have registered yet.</td>
+                            </tr>
+
+                        <?php else: ?>
+
+                            <?php foreach ($students as $s): ?>
+
+                                <?php
+                                // join first and last name (some students have no last name)
+                                $full_name = trim($s["first_name"] . " " . $s["last_name"]);
+                                ?>
+
+                                <!-- the data-* attributes are what the JavaScript uses to filter -->
+                                <tr class="student-row"
+                                    data-name="<?= e($full_name) ?>"
+                                    data-studentid="<?= e($s["student_id"]) ?>"
+                                    data-email="<?= e($s["email"]) ?>"
+                                    data-course="<?= e($s["course"]) ?>"
+                                    data-year="<?= e($s["year_level"]) ?>">
+
+                                    <td><span class="cell-id"><?= (int)$s["id"] ?></span></td>
+                                    <td><?= e($full_name) ?></td>
+                                    <td><?= e($s["student_id"]) ?></td>
+                                    <td class="cell-muted"><?= e($s["email"]) ?></td>
+                                    <td><?= e($s["course"]) ?></td>
+                                    <td><?= e($s["year_level"]) ?></td>
+                                  
+
+                                </tr>
+
+                            <?php endforeach; ?>
+
+                            <!-- shown by the JavaScript when the search/filters match nobody -->
+                            <tr class="empty-row" id="noMatchRow" style="display: none;">
+                                <td colspan="7">No students found. Try a different search or filter.</td>
+                            </tr>
+
+                        <?php endif; ?>
+
+                    </tbody>
 
                 </table>
 
@@ -254,14 +379,12 @@
             <!-- Count + pagination -->
             <div class="table-footer">
 
-                <div class="showing-text" id="showingText"></div>
-
-                <!-- TODO: make pagination work when there are more students -->
-                <div class="pagination">
-                    <button class="page-btn">‹</button>
-                    <button class="page-btn current">1</button>
-                    <button class="page-btn">›</button>
+                <div class="showing-text" id="showingText">
+                    Showing <?= $total_students ?> of <?= $total_students ?> students
                 </div>
+
+                <!-- the page buttons (‹ 1 2 3 ›) are made by student.js, 10 students per page -->
+                <div class="pagination" id="pagination"></div>
 
             </div>
 
@@ -270,81 +393,14 @@
     </main>
 
 
-    <!-- =========================================
-         ADD STUDENT POPUP
-         ========================================= -->
-
-    <div class="modal-overlay" id="addModal">
-
-        <div class="modal">
-
-            <div class="modal-label">STUDENT RECORDS</div>
-            <h2 class="modal-title">Add student</h2>
-
-            <div class="form-group">
-                <label for="newName">Full Name</label>
-                <input type="text" id="newName" class="form-input" placeholder="Juan Dela Cruz">
-            </div>
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="newStudentId">Student ID</label>
-                    <input type="text" id="newStudentId" class="form-input" placeholder="2025-12345">
-                </div>
-
-                <div class="form-group">
-                    <label for="newEmail">Email</label>
-                    <input type="text" id="newEmail" class="form-input" placeholder="name@ncst.edu.ph">
-                </div>
-
-            </div>
-
-            <div class="form-row">
-
-                <div class="form-group">
-                    <label for="newCourse">Course</label>
-                    <select id="newCourse" class="filter-select">
-                        <option value="BSIT">BSIT</option>
-                        <option value="BSCS">BSCS</option>
-                        <option value="BSE">BSE</option>
-                        <option value="BSEE">BSEE</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="newYear">Year Level</label>
-                    <select id="newYear" class="filter-select">
-                        <option value="1st Year">1st Year</option>
-                        <option value="2nd Year">2nd Year</option>
-                        <option value="3rd Year">3rd Year</option>
-                        <option value="4th Year">4th Year</option>
-                    </select>
-                </div>
-
-            </div>
-
-            <!-- error message shows here -->
-            <div class="form-error" id="formError"></div>
-
-            <div class="modal-buttons">
-                <button class="btn-outline" id="cancelAdd">Cancel</button>
-                <button class="btn-gold" id="saveAdd">Add Student</button>
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- TOAST MESSAGE (styled in style.css) -->
+    <!-- TOAST MESSAGE -->
     <div class="toast" id="toast"></div>
 
 
     <!-- =========================================
          JAVASCRIPT
          ========================================= -->
-        <script src="../../asset/js/student.js"></script>
+    <script src="../../asset/js/student.js?v=<?= filemtime(__DIR__ . '/../../asset/js/student.js') ?>"></script>
 
 </body>
 </html>

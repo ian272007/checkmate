@@ -49,9 +49,7 @@
             background: #241e12;
         }
 
-        .notification {
-            font-size: 30px;
-        }
+        
 
         .sidebar-account {
     position: absolute;
@@ -579,54 +577,7 @@ body {
     gap: 20px;
 }
 
-.notification {
-    position: relative;
 
-    width: 32px;
-    height: 32px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: transparent;
-
-    color: #8a949d;
-
-    border: none;
-
-    cursor: pointer;
-
-    font-size: 15px;
-}
-
-.notification:hover {
-    color: #d2aa60;
-}
-
-.notification-count {
-    position: absolute;
-
-    top: 1px;
-    right: 0;
-
-    min-width: 14px;
-    height: 14px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: #d2aa60;
-
-    color: #111519;
-
-    border-radius: 50%;
-
-    font-size: 9px;
-
-    font-weight: bold;
-}
 
 
 /* =========================================
@@ -889,13 +840,9 @@ body {
    ========================================= */
 
 .panel-grid {
-    display: grid;
+  width: 80%;
+  
 
-    grid-template-columns: 1fr 1fr;
-
-    gap: 12px;
-
-    margin-bottom: 32px;
 }
 
 .panel {
@@ -1077,14 +1024,14 @@ body {
 
 .quick-access {
     margin-top: 5px;
+   
+    
 }
 
 .quick-grid {
-    display: grid;
-
-    grid-template-columns: repeat(4, 1fr);
-
-    gap: 10px;
+      display: flex;
+    justify-content: center; /* Horizontal center */
+    
 }
 
 .quick-card {
@@ -1479,6 +1426,10 @@ body {
         .status.pending,
         .status.new {
             background: #241e12;
+        }
+
+        .notification {
+            font-size: 30px;
         }
 
         

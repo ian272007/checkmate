@@ -11,6 +11,67 @@
             display: none;
         }
 
+        /* Inactive = red badge */
+.data-table .status.inactive {
+    color: #e2766a;
+    background: #3a1815;
+    border: 1px solid #7a3029;
+}
+
+/* ---------- notification icon + badge ---------- */
+
+.topbar button.notification {
+    position: relative !important;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+    padding: 0 !important;
+
+    background: transparent !important;
+    color: #7f8f9c !important;
+
+    border: none !important;
+    outline: none;
+
+    font-size: 30px !important;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.topbar button.notification:hover {
+    color: #a9b6c1 !important;
+}
+
+.topbar button.notification .notification-count {
+    position: absolute !important;
+    top: 2px;
+    right: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+
+    background: #d9a15a !important;
+    color: #111519 !important;
+
+    border: 1px solid #111519;
+    border-radius: 50%;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px !important;
+    font-weight: bold;
+    line-height: 1;
+}
+
         .sidebar-account {
     position: absolute;
     left: 0;
