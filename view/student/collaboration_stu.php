@@ -125,13 +125,18 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
             "SELECT u.id, u.first_name, u.last_name, u.student_id,
                     u.course, u.year_level,
                     (
-                        SELECT c.status
+                        SELECT CASE
+                            WHEN SUM(c.status = 'Accepted') > 0
+                                THEN 'Accepted'
+                            WHEN SUM(c.question_id = ? AND c.status = 'Pending') > 0
+                                THEN 'Pending'
+                            WHEN SUM(c.question_id = ? AND c.requester_id = ? AND c.status = 'Rejected') > 0
+                                THEN 'Rejected'
+                            ELSE NULL
+                        END
                         FROM collaborations c
-                        WHERE c.question_id = ?
-                          AND c.requester_id = ?
-                          AND c.receiver_id = u.id
-                        ORDER BY c.collaboration_id DESC
-                        LIMIT 1
+                        WHERE (c.requester_id = ? AND c.receiver_id = u.id)
+                           OR (c.requester_id = u.id AND c.receiver_id = ?)
                     ) AS existing_status
              FROM users u
              WHERE u.id <> ?
@@ -152,8 +157,11 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
         }
 
         $stmt->bind_param(
-            "iiisssss",
+            "iiiiiisssss",
             $questionId,
+            $questionId,
+            $user_id,
+            $user_id,
             $user_id,
             $user_id,
             $like,
@@ -260,17 +268,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "send") {
             ], 403);
         }
 
-        /* One request per question and student */
+        /* Block duplicates in either direction, or if already collaborating */
         $stmt = $conn->prepare(
             "SELECT collaboration_id
              FROM collaborations
-             WHERE question_id = ? AND requester_id = ? AND receiver_id = ?
+             WHERE (
+                    (requester_id = ? AND receiver_id = ?)
+                 OR (requester_id = ? AND receiver_id = ?)
+             )
+               AND (status = 'Accepted' OR question_id = ?)
              LIMIT 1"
         );
         if (!$stmt) {
             throw new Exception("prepare failed");
         }
-        $stmt->bind_param("iii", $questionId, $user_id, $receiverId);
+        $stmt->bind_param(
+            "iiiii",
+            $user_id,
+            $receiverId,
+            $receiverId,
+            $user_id,
+            $questionId
+        );
         $stmt->execute();
         $already = (bool)$stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -278,7 +297,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "send") {
         if ($already) {
             jsonOut([
                 "ok" => false,
-                "error" => "You already sent a request to this student for that question."
+                "error" => "You already have a request or collaboration with this student."
             ], 409);
         }
 

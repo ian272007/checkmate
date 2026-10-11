@@ -79,13 +79,17 @@ $csrf = $_SESSION["messages_csrf"];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHECKMATE - Messages</title>
 
-    <!-- Bootstrap 5.3.3: same version as Collaboration -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           rel="stylesheet">
     <script src="../../asset/js/notify.js" defer></script>
     <script src="../../asset/js/user_menu.js" defer></script>
-    <!-- Messages custom styles must load after Bootstrap -->
-    <link rel="stylesheet" href="../../asset/css/messages.css">
+
+    <!-- Shared student shell (sidebar, topbar, page layout): same file as Collaboration -->
+    <link rel="stylesheet"
+          href="../../asset/css/question.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/question.css') ?>">
+    <!-- Messages-only styles (messenger / chat) -->
+    <link rel="stylesheet"
+          href="../../asset/css/messages.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/messages.css') ?>">
 
     <script>
         window.CHECKMATE_MESSAGES = {
@@ -100,10 +104,9 @@ $csrf = $_SESSION["messages_csrf"];
 
 <body>
 
-<aside class="msg-sidebar">
+<aside class="sidebar">
     <div class="logo-area">
-        <div class="logo-piece" aria-hidden="true">♞</div>
-
+        <div class="logo-piece">♞</div>
         <div class="logo-text">
             <h1>CHECKMATE</h1>
             <span>PEER COLLABORATION</span>
@@ -118,66 +121,53 @@ $csrf = $_SESSION["messages_csrf"];
     <div class="sidebar-section">
         <div class="section-title">WORKSPACE</div>
 
-        <nav class="msg-nav">
-            <a href="student_home.php" class="menu-item">
-                <span class="menu-icon">⌂</span>
-                <span>Home</span>
-            </a>
+        <a href="student_home.php" class="menu-item">
+            <span class="menu-icon">⌂</span><span>Home</span>
+        </a>
 
-            <a href="questions.php" class="menu-item">
-                <span class="menu-icon">?</span>
-                <span>Questions</span>
-            </a>
+        <a href="questions.php" class="menu-item">
+            <span class="menu-icon">?</span><span>Questions</span>
+        </a>
 
-            <a href="my_question.php" class="menu-item">
-                <span class="menu-icon">♧</span>
-                <span>My Questions</span>
-            </a>
+        <a href="my_question.php" class="menu-item">
+            <span class="menu-icon">♧</span><span>My Questions</span>
+        </a>
 
-            <a href="collaboration_stu.php" class="menu-item">
-                <span class="menu-icon">♟</span>
-                <span>Collaboration</span>
-            </a>
+        <a href="collaboration_stu.php" class="menu-item">
+            <span class="menu-icon">♟</span><span>Collaboration</span>
+        </a>
 
-            <a href="messages.php"
-               class="menu-item active"
-               aria-current="page">
-                <span class="menu-icon">✉</span>
-                <span>Messages</span>
-            </a>
-        </nav>
+        <a href="messages.php" class="menu-item active" aria-current="page">
+            <span class="menu-icon">✉</span><span>Messages</span>
+        </a>
     </div>
 
-    <div class="msg-profile">
+    <div class="sidebar-user">
         <div class="user-avatar"><?= e($initials) ?></div>
 
         <div class="user-information">
             <strong><?= e($fullName) ?></strong>
-
-            <span>
-                <?= e($course ?: "Student") ?><?= $course !== "" ? " · " : "" ?><?= e($user["student_id"]) ?>
-            </span>
+            <span><?= e($course ?: "Student") ?> · <?= e($user["student_id"]) ?></span>
         </div>
 
-        <button class="user-more"
-                type="button"
-                aria-label="More options">⋮</button>
+        <button class="user-more" type="button" aria-label="More options">⋮</button>
     </div>
 </aside>
 
-<main class="msg-main">
-    <header class="msg-topbar">
-        <div class="crumb">
+<main class="main-content">
+    <header class="topbar">
+        <div class="topbar-left">
             <span class="topbar-label">STUDENT WORKSPACE</span>
             <span class="topbar-divider">/</span>
             <span class="topbar-current">Messages</span>
         </div>
     </header>
 
-    <section class="msg-content">
-        <div class="page-intro">
-            <span class="eyebrow">PEER COLLABORATION</span>
-            <h1>Messages</h1>
+    <section class="questions-page msg-page">
+
+        <div class="page-heading">
+            <span class="heading-label">PEER COLLABORATION</span>
+            <h2>Messages</h2>
             <p>Chat privately with students you are collaborating with. Messaging opens after a collaboration request is accepted.</p>
         </div>
 
@@ -294,6 +284,7 @@ $csrf = $_SESSION["messages_csrf"];
         <p class="security-note">
             Messages are private to the two students in each conversation.
         </p>
+
     </section>
 </main>
 

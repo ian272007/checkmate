@@ -145,7 +145,7 @@
 
     /* ---------- Live refresh ---------- */
 
-    async function refreshList() {
+        async function refreshList() {
         if (refreshing || !collabList) return;
 
         refreshing = true;
@@ -199,6 +199,9 @@
 
             syncTabs();
             applyCollabFilters();
+
+            // Keep the "Find a peer" list in sync (Collaborating / Pending tags)
+            if (typeof loadStudents === "function") loadStudents();
         } catch {
             /* try again on the next check */
         } finally {
