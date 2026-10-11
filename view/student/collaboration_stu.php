@@ -529,7 +529,7 @@ $updated = $_GET["updated"] ?? "";
             <strong>
                 <?= e(trim(($user["first_name"] ?? "") . " " . ($user["last_name"] ?? "")) ?: "Student") ?>
             </strong>
-            <span><?= e($user["course"]) ?> · <?= e($user["student_id"]) ?></span>
+            <span><?= e($user["course"]) ?> <br> <?= e($user["student_id"]) ?></span>
         </div>
         <button class="user-more" type="button" aria-label="More options">⋮</button>
     </div>

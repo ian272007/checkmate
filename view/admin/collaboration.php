@@ -1,3 +1,57 @@
+<?php
+session_start();
+require "../../config/config.php";   // your connection file
+
+// make mysqli throw real errors and read text correctly
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$conn->set_charset("utf8mb4");
+
+// only admins can open this page
+// (CHANGE 'role' and the login path if yours are different)
+if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: ../../authentication/Login/login.php");
+    exit;
+}
+
+// ---------- all collaboration requests ----------
+// who asked (requester), who was asked (receiver), and the question they are collaborating on
+$sql = "SELECT c.collaboration_id AS id,
+               c.status,
+               c.create_at,
+               q.question AS topic,
+               q.subject,
+               q.question_course AS course,
+               TRIM(CONCAT(COALESCE(ur.first_name, ''), ' ', COALESCE(ur.last_name, ''))) AS requester,
+               TRIM(CONCAT(COALESCE(ue.first_name, ''), ' ', COALESCE(ue.last_name, ''))) AS receiver
+        FROM collaborations c
+        LEFT JOIN questions q ON q.question_id = c.question_id
+        LEFT JOIN users ur ON ur.id = c.requester_id
+        LEFT JOIN users ue ON ue.id = c.receiver_id
+        ORDER BY c.create_at DESC, c.collaboration_id DESC";
+
+$requests = [];
+$result = $conn->query($sql);
+while ($row = $result->fetch_assoc()) {
+
+    $row["id"] = (int) $row["id"];
+
+    if ($row["requester"] === "") { $row["requester"] = "Unknown"; }
+    if ($row["receiver"] === "")  { $row["receiver"]  = "Unknown"; }
+    if ($row["topic"] === null)   { $row["topic"] = "(question was deleted)"; }
+
+    // nice date + time for the table
+    $time = strtotime($row["create_at"]);
+    $row["date"] = date("M j, Y", $time);
+    $row["time"] = date("h:i A", $time);
+    unset($row["create_at"]);
+
+    $requests[] = $row;
+}
+
+// ---------- sidebar numbers ----------
+$studentCount = (int) $conn->query("SELECT COUNT(*) AS c FROM users WHERE role = 'student'")->fetch_assoc()["c"];
+$pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE status = 'Pending'")->fetch_assoc()["c"];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,9 +60,8 @@
 
     <title>CHECKMATE - Collaborations</title>
 
-    <!-- Same stylesheet as the other admin pages -->
-    <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/collaboration.css">
+     <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= time() ?>">
+<link rel="stylesheet" href="../../asset/css/collaboration.css?v=<?= time() ?>">
 </head>
 
 <body>
@@ -19,19 +72,15 @@
 
     <aside class="sidebar">
 
-        <!-- Logo -->
         <div class="logo">
             <span>♞</span>
             CHECKMATE
         </div>
 
-        <!-- Account Type -->
         <div class="admin-label">
             ADMINISTRATION
         </div>
 
-
-        <!-- OVERVIEW MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -51,7 +100,7 @@
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <span class="menu-count"><?= $studentCount ?></span>
                     </a>
                 </li>
 
@@ -63,7 +112,6 @@
                 </li>
 
                 <li>
-                    <!-- this is the current page so it is active -->
                     <a href="collaboration.php" class="active" data-page="collaborations">
                         <span class="menu-icon">♞</span>
                         <span>Collaborations</span>
@@ -74,8 +122,6 @@
 
         </div>
 
-
-        <!-- MANAGEMENT MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -102,7 +148,9 @@
                     <a href="report.php" data-page="reports">
                         <span class="menu-icon">▤</span>
                         <span>Reports</span>
-                        <span class="menu-dot"></span>
+                        <?php if ($pendingReports > 0): ?>
+                            <span class="menu-dot"></span>
+                        <?php endif; ?>
                     </a>
                 </li>
 
@@ -110,42 +158,40 @@
 
         </div>
 
-    <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
-
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
 
     </aside>
 
@@ -156,7 +202,6 @@
 
     <main class="main">
 
-        <!-- TOP BAR -->
         <header class="topbar">
 
             <div class="topbar-left">
@@ -177,29 +222,34 @@
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pendingReports > 0): ?>
+                        <span class="notification-count"><?= $pendingReports ?></span>
+                    <?php endif; ?>
 
                 </button>
-
-             
 
             </div>
 
         </header>
 
 
-        <!-- PAGE CONTENT -->
         <section class="content">
 
             <!-- Summary cards (click one to jump to the matching view) -->
             <div class="stat-row">
+
+                <div class="stat-card" data-jump="all">
+                    <div class="stat-icon blue">▤</div>
+                    <div class="stat-info">
+                        <div class="stat-label">Total Requests</div>
+                        <div class="stat-number" id="statTotal">0</div>
+                    </div>
+                    <div class="stat-arrow">→</div>
+                </div>
 
                 <div class="stat-card" data-jump="Pending">
                     <div class="stat-icon">◔</div>
@@ -214,25 +264,7 @@
                     <div class="stat-icon green">♞</div>
                     <div class="stat-info">
                         <div class="stat-label">Active Collaborations</div>
-                        <div class="stat-number" id="statActive">12</div>
-                    </div>
-                    <div class="stat-arrow">→</div>
-                </div>
-
-                <div class="stat-card" data-jump="Accepted">
-                    <div class="stat-icon blue">✓</div>
-                    <div class="stat-info">
-                        <div class="stat-label">Accepted This Week</div>
-                        <div class="stat-number" id="statAccepted">0</div>
-                    </div>
-                    <div class="stat-arrow">→</div>
-                </div>
-
-                <div class="stat-card" data-jump="Rejected">
-                    <div class="stat-icon red">✕</div>
-                    <div class="stat-info">
-                        <div class="stat-label">Rejected</div>
-                        <div class="stat-number" id="statRejected">0</div>
+                        <div class="stat-number" id="statActive">0</div>
                     </div>
                     <div class="stat-arrow">→</div>
                 </div>
@@ -244,7 +276,6 @@
             <div class="tabs">
                 <button class="tab active" data-tab="requests">▤ Requests</button>
                 <button class="tab" data-tab="active">♞ Active Collaborations</button>
-                <button class="tab" data-tab="history">◷ History</button>
             </div>
 
 
@@ -252,8 +283,8 @@
             <div class="panel" id="requestsPanel">
 
                 <div class="panel-head">
-                    <div class="panel-title" id="requestsTitle">Collaboration Requests</div>
-                    <div class="panel-sub" id="requestsSub">Review and manage incoming collaboration requests.</div>
+                    <div class="panel-title">Collaboration Requests</div>
+                    <div class="panel-sub" id="requestsSub">All collaboration requests sent between students.</div>
                 </div>
 
                 <div class="table-wrap">
@@ -268,11 +299,10 @@
                                 <th>Collaboration Topic</th>
                                 <th>Requested On</th>
                                 <th>Status</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
 
-                        <!-- rows are filled in by the JavaScript below -->
+                        <!-- rows are filled in by collaboration.js -->
                         <tbody id="requestsBody"></tbody>
 
                     </table>
@@ -281,13 +311,7 @@
 
                 <div class="panel-footer">
                     <div class="showing-text" id="showingText"></div>
-
-                    <!-- TODO: make pagination work when there are more requests -->
-                    <div class="pagination">
-                        <button class="page-btn">‹</button>
-                        <button class="page-btn current">1</button>
-                        <button class="page-btn">›</button>
-                    </div>
+                    <div class="pagination" id="requestsPagination"></div>
                 </div>
 
             </div>
@@ -298,21 +322,14 @@
 
                 <div class="panel-head">
                     <div class="panel-title">Active Collaborations</div>
-                    <div class="panel-sub">View currently ongoing student partnerships.</div>
+                    <div class="panel-sub">Currently ongoing student partnerships (accepted requests).</div>
                 </div>
 
                 <div class="active-grid" id="activeGrid"></div>
 
                 <div class="panel-footer">
                     <div class="showing-text" id="activeShowing"></div>
-
-                    <!-- TODO: make pagination work when there are more than 6 -->
-                    <div class="pagination">
-                        <button class="page-btn">‹</button>
-                        <button class="page-btn current">1</button>
-                        <button class="page-btn">2</button>
-                        <button class="page-btn">›</button>
-                    </div>
+                    <div class="pagination" id="activePagination"></div>
                 </div>
 
             </div>
@@ -322,8 +339,13 @@
     </main>
 
 
-    <!-- TOAST MESSAGE (styled in style.css) -->
     <div class="toast" id="toast"></div>
+
+    <!-- data from the database, used by collaboration.js -->
+    <script>
+        var requests = <?= json_encode($requests, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+        var pendingReports = <?= $pendingReports ?>;
+    </script>
 
     <script src="../../asset/js/collaboration.js"></script>
 

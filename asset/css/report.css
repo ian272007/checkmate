@@ -700,6 +700,137 @@
             }
         }
 
-        .notification {
-            font-size: 30px;
-        }
+       /* red badge for rejected reports */
+.status.rejected {
+    color: #c46a5f;
+    background: #241512;
+    border: 1px solid #5a2f2b;
+}
+
+/* delete button */
+.action-btn.delete {
+    background: #1f1612;
+    color: #d0865a;
+    border-color: #5a3a2a;
+}
+
+.action-btn.delete:hover {
+    border-color: #d0865a;
+    color: #e59a6d;
+}
+
+/* long questions get cut off with ... in the table */
+.title-cell {
+    max-width: 220px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* view popup: long text scrolls instead of growing the popup */
+.modal {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.detail-label {
+    margin-bottom: 6px;
+
+    color: #68727b;
+    font-size: 10px;
+}
+
+.detail-box {
+    max-height: 140px;
+    overflow-y: auto;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.detail-meta {
+    margin: -8px 0 12px;
+
+    color: #68727b;
+    font-size: 10px;
+}
+
+.attach-img {
+    display: block;
+
+    max-width: 100%;
+    max-height: 160px;
+    margin-bottom: 14px;
+
+    border: 1px solid #292f34;
+    border-radius: 5px;
+}
+
+.attach-link {
+    display: inline-block;
+
+    margin-bottom: 14px;
+
+    color: #d2aa60;
+    font-size: 11px;
+}
+
+/* ---------- notification icon + badge ---------- */
+
+.topbar button.notification {
+    position: relative !important;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+    padding: 0 !important;
+
+    background: transparent !important;
+    color: #7f8f9c !important;
+
+    border: none !important;
+    outline: none;
+
+    font-size: 30px !important;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.topbar button.notification:hover {
+    color: #a9b6c1 !important;
+}
+
+.topbar button.notification .notification-count {
+    position: absolute !important;
+    top: 2px;
+    right: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+
+    background: #d9a15a !important;
+    color: #111519 !important;
+
+    border: 1px solid #111519;
+    border-radius: 50%;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px !important;
+    font-weight: bold;
+    line-height: 1;
+}

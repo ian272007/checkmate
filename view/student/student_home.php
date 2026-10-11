@@ -298,8 +298,8 @@ try {
             </strong>
 
             <span>
-                <?= e($user["course"] ?? "") ?>
-                ·
+                <?= e($user["course"] ?? "") ?> <br>
+                
                 <?= e($user["student_id"] ?? "") ?>
             </span>
         </div>

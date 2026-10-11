@@ -1,3 +1,42 @@
+<?php
+session_start();
+require "../../config/config.php";   // your connection file
+
+// make mysqli throw real errors and read text correctly
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$conn->set_charset("utf8mb4");
+
+// only admins can open this page
+// (CHANGE 'role' and the login path if yours are different)
+if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: ../../authentication/Login/login.php");
+    exit;
+}
+
+// token used to protect add / edit / delete
+if (empty($_SESSION["csrf"])) {
+    $_SESSION["csrf"] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION["csrf"];
+
+// ---------- question types (with how many questions use each one) ----------
+$types = [];
+$result = $conn->query(
+    "SELECT t.id, t.type_name AS name, t.status,
+            (SELECT COUNT(*) FROM questions q WHERE q.question_type = t.type_name) AS used
+     FROM question_types t
+     ORDER BY t.id"
+);
+while ($row = $result->fetch_assoc()) {
+    $row["id"] = (int) $row["id"];
+    $row["used"] = (int) $row["used"];
+    $types[] = $row;
+}
+
+// ---------- sidebar numbers ----------
+$studentCount = (int) $conn->query("SELECT COUNT(*) AS c FROM users WHERE role = 'student'")->fetch_assoc()["c"];
+$pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE status = 'Pending'")->fetch_assoc()["c"];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,12 +45,8 @@
 
     <title>CHECKMATE - Question Types</title>
 
-    <!-- Same stylesheet as the other admin pages -->
-    <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/question_type.css">
-
-
-   
+    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/question_type.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question_type.css') ?>">
 </head>
 
 <body>
@@ -22,19 +57,15 @@
 
     <aside class="sidebar">
 
-        <!-- Logo -->
         <div class="logo">
             <span>♞</span>
             CHECKMATE
         </div>
 
-        <!-- Account Type -->
         <div class="admin-label">
             ADMINISTRATION
         </div>
 
-
-        <!-- OVERVIEW MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -54,7 +85,7 @@
                     <a href="student.php" data-page="students">
                         <span class="menu-icon">♟</span>
                         <span>Students</span>
-                        <span class="menu-count">8</span>
+                        <span class="menu-count"><?= $studentCount ?></span>
                     </a>
                 </li>
 
@@ -76,8 +107,6 @@
 
         </div>
 
-
-        <!-- MANAGEMENT MENU -->
         <div class="sidebar-section">
 
             <div class="sidebar-title">
@@ -94,7 +123,7 @@
                 </li>
 
                 <li>
-                    <a href="question_type.php" data-page="types">
+                    <a href="question_type.php" class="active" data-page="types">
                         <span class="menu-icon">≡</span>
                         <span>Question Types</span>
                     </a>
@@ -104,7 +133,9 @@
                     <a href="report.php" data-page="reports">
                         <span class="menu-icon">▤</span>
                         <span>Reports</span>
-                        <span class="menu-dot"></span>
+                        <?php if ($pendingReports > 0): ?>
+                            <span class="menu-dot"></span>
+                        <?php endif; ?>
                     </a>
                 </li>
 
@@ -112,44 +143,41 @@
 
         </div>
 
-
         <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-       <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
+        <div class="sidebar-account">
 
-    <div class="sidebar-account-user">
+            <div class="sidebar-account-user">
 
-        <div class="sidebar-account-avatar">
-            A
+                <div class="sidebar-account-avatar">
+                    A
+                </div>
+
+                <div class="sidebar-account-info">
+                    <strong>Administrator</strong>
+                    <span>CHECKMATE Admin</span>
+                </div>
+
+                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+            </div>
+
+            <div class="account-menu" id="accountMenu">
+                <a href="change_password.html">
+                    <span class="account-menu-icon">⚿</span>
+                    <span>Change Password</span>
+                </a>
+                <a href="../../authentication/Login/logout.php" class="menu-logout">
+                    <span class="account-menu-icon">⏻</span>
+                    <span>Log Out</span>
+                </a>
+            </div>
+
         </div>
 
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
     </aside>
 
 
@@ -159,7 +187,6 @@
 
     <main class="main">
 
-        <!-- TOP BAR -->
         <header class="topbar">
 
             <div class="topbar-left">
@@ -180,24 +207,21 @@
 
             <div class="topbar-right">
 
-                <!-- Notifications -->
                 <button class="notification" id="notificationButton">
 
                     ♧
 
-                    <span class="notification-count">
-                        3
-                    </span>
+                    <?php if ($pendingReports > 0): ?>
+                        <span class="notification-count"><?= $pendingReports ?></span>
+                    <?php endif; ?>
 
                 </button>
 
-             
             </div>
 
         </header>
 
 
-        <!-- PAGE CONTENT -->
         <section class="content">
 
             <!-- Summary cards (click one to filter the table) -->
@@ -264,13 +288,13 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Type Name</th>
-                                <th>Description</th>
+                                <th>Questions</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
 
-                        <!-- rows are filled in by the JavaScript below -->
+                        <!-- rows are filled in by question_type.js -->
                         <tbody id="tableBody"></tbody>
 
                     </table>
@@ -279,13 +303,7 @@
 
                 <div class="panel-footer">
                     <div class="showing-text" id="showingText"></div>
-
-                    <!-- TODO: make pagination work when there are more types -->
-                    <div class="pagination">
-                        <button class="page-btn">‹</button>
-                        <button class="page-btn current">1</button>
-                        <button class="page-btn">›</button>
-                    </div>
+                    <div class="pagination" id="pagination"></div>
                 </div>
 
             </div>
@@ -308,12 +326,7 @@
 
             <div class="form-group">
                 <label for="formName">Type name</label>
-                <input type="text" id="formName" class="form-input" placeholder="Multiple Choice">
-            </div>
-
-            <div class="form-group">
-                <label for="formDesc">Description</label>
-                <input type="text" id="formDesc" class="form-input" placeholder="Choose the correct answer from options.">
+                <input type="text" id="formName" class="form-input" maxlength="100" placeholder="Assignment Help">
             </div>
 
             <div class="form-group">
@@ -324,7 +337,6 @@
                 </select>
             </div>
 
-            <!-- error message shows here -->
             <div class="form-error" id="formError"></div>
 
             <div class="modal-buttons">
@@ -337,12 +349,16 @@
     </div>
 
 
-    <!-- TOAST MESSAGE (styled in style.css) -->
     <div class="toast" id="toast"></div>
 
+    <!-- data from the database, used by question_type.js -->
+    <script>
+        var types = <?= json_encode($types, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
+        var csrfToken = <?= json_encode($csrf) ?>;
+        var pendingReports = <?= $pendingReports ?>;
+    </script>
 
-   
     <script src="../../asset/js/question_type.js"></script>
-  
+
 </body>
 </html>
