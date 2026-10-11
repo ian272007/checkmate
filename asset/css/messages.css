@@ -1,43 +1,10 @@
 /* =========================================================
    CHECKMATE — MESSAGES
-   Shared student shell aligned with collaboration_stu.php.
-   Messaging-specific layout and responsive behavior retained.
+   Loads AFTER question.css.
+   Sidebar, topbar, page heading and page padding now come from
+   question.css (same as Collaboration). This file only contains
+   the messenger / chat styles.
    ========================================================= */
-
-:root {
-    --bg: #0b0e11;
-    --sidebar: #101419;
-    --panel: #10151a;
-    --field: #0f1418;
-    --border: #293139;
-    --border-soft: #252c32;
-    --text: #d0cac0;
-    --heading: #e7e0d5;
-    --muted: #8191a2;
-    --muted-dark: #6e8295;
-    --gold: #d4a657;
-    --gold-border: #71582d;
-    --gold-bg: #181816;
-    --green: #a9ddb6;
-    --red: #f0b3b3;
-}
-
-* { box-sizing: border-box; }
-
-html, body {
-    width: 100%;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 13px;
-    overflow-x: hidden;
-}
 
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
@@ -49,307 +16,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     outline-offset: 2px;
 }
 
-
-/* ===================== STUDENT SIDEBAR ===================== */
-
-.msg-sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    width: 253px;
-    height: 100vh;
-    padding: 29px 17px 15px;
-    background: #101419;
-    border-right: 1px solid #272d33;
-    overflow-x: hidden;
-    overflow-y: auto;
-}
-
-.logo-area {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    margin: 0 0 31px;
-    padding: 0 8px;
-}
-
-.logo-piece {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    margin-right: 11px;
-    border: 1px solid #394149;
-    border-radius: 6px;
-    color: #c49b4d;
-    font-size: 20px;
-}
-
-.logo-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.logo-text h1 {
-    margin: 0;
-    color: #e7e0d5;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 18px;
-    font-weight: 400;
-    letter-spacing: 2px;
-}
-
-.logo-text span {
-    display: block;
-    margin-top: 7px;
-    color: #6f8193;
-    font-size: 8px;
-    letter-spacing: 1.5px;
-    white-space: nowrap;
-}
-
-.new-question-button {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    width: 100%;
-    min-height: 55px;
-    margin: 0 0 31px;
-    padding: 0 14px;
-    border: 1px solid #71582d;
-    border-radius: 6px;
-    background: #181a18;
-    color: #d4a657;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    transition: background .2s ease, border-color .2s ease;
-}
-
-.new-question-button:hover {
-    background: #201f1b;
-    border-color: #9b7739;
-    color: #e0b563;
-}
-
-.button-icon {
-    margin-right: 10px;
-    color: #d4a657;
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.sidebar-section {
-    flex-shrink: 0;
-}
-
-.section-title {
-    margin: 0 0 10px;
-    padding-left: 11px;
-    color: #6d7d8e;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.7px;
-}
-
-.msg-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 100%;
-}
-
-.msg-nav a {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    width: 100%;
-    min-height: 43px;
-    margin: 0;
-    padding: 0 10px 0 17px;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    background: transparent;
-    color: #8191a2;
-    font-size: 13px;
-    text-decoration: none;
-    transition: background .2s ease, color .2s ease;
-}
-
-.msg-nav a:hover {
-    background: #171c21;
-    color: #d5d0c8;
-}
-
-.msg-nav a.active,
-.msg-nav a[aria-current="page"] {
-    background: #1d1a14;
-    border-color: #6b5630;
-    color: #e2e5e8;
-}
-
-.msg-nav a .menu-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    flex-shrink: 0;
-    margin-right: 0;
-    color: #7d8d9e;
-    font-size: 15px;
-    text-align: center;
-}
-
-.msg-nav a.active .menu-icon,
-.msg-nav a[aria-current="page"] .menu-icon,
-.msg-nav a:hover .menu-icon {
-    color: #c69a4b;
-}
-
-.msg-profile {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: 9px;
-    min-width: 0;
-    min-height: 62px;
-    margin-top: auto;
-    padding: 13px 8px 0;
-    border-top: 1px solid #272d33;
-}
-
-.user-avatar,
-.person-avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border: 1px solid #38414a;
-    border-radius: 50%;
-    background: #191e23;
-    color: #c79b4c;
-    font-family: Georgia, "Times New Roman", serif;
-}
-
-.msg-profile .user-avatar {
-    width: 37px;
-    height: 37px;
-    font-size: 14px;
-}
-
-.user-information {
-    min-width: 0;
-    margin-left: 0;
-    flex: 1;
-}
-
-.user-information strong {
-    display: block;
-    overflow: hidden;
-    color: #e2ddd5;
+/* question.css forces every h2 inside .questions-page to Georgia.
+   Keep the chat name in Arial like before. */
+.msg-page .chat-person h2 {
+    font-family: Arial, Helvetica, sans-serif !important;
     font-size: 12px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.user-information span {
-    display: block;
-    overflow: hidden;
-    margin-top: 4px;
-    color: #68798a;
-    font-size: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.user-more {
-    flex-shrink: 0;
-    margin-left: auto;
-    padding: 2px;
-    border: 0;
-    background: transparent;
-    color: #bd9148;
-    font-size: 19px;
-}
-
-.user-more:hover {
-    color: #d0a55c;
-}
-
-
-
-/* ===================== MAIN AND TOPBAR ===================== */
-
-.msg-main {
-    min-width: 0;
-    min-height: 100vh;
-    margin-left: 253px;
-    background: #0b0e11;
-}
-
-.msg-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-    width: 100%;
-    min-height: 70px;
-    padding: 12px 30px;
-    background: #0b0e11;
-    border-bottom: 1px solid #293139;
-}
-
-.crumb {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-}
-
-.topbar-label {
-    color: #6e8295;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-}
-
-.topbar-divider {
-    margin: 0 12px;
-    color: #68727b;
-}
-
-.topbar-current {
-    color: #d4a657;
-    font-size: 11px;
-}
-
-.topbar-right a {
-    color: #b08c4d;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-decoration: none;
-}
-
-.topbar-right a:hover {
-    color: #d4a657;
-}
-
-.msg-content {
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-    padding: 35px 30px 28px;
-}
-
-.page-intro {
-    margin-bottom: 23px;
+    font-weight: 600 !important;
 }
 
 .eyebrow {
@@ -357,24 +29,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1.6px;
-}
-
-.page-intro h1 {
-    margin: 10px 0 0;
-    padding: 0;
-    color: #e7e0d5;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 25px;
-    font-weight: 400;
-    line-height: 1.3;
-}
-
-.page-intro p {
-    max-width: 650px;
-    margin: 8px 0 0;
-    color: #718398;
-    font-size: 11px;
-    line-height: 1.7;
 }
 
 .message-alert {
@@ -402,10 +56,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
     width: 100%;
     min-width: 0;
-    height: calc(100vh - 265px);
+    height: calc(100vh - 330px);
     min-height: 460px;
     max-height: 820px;
-    margin-top: 22px;
+    margin-top: 0;
     overflow: hidden;
     border: 1px solid #293139;
     border-radius: 5px;
@@ -554,6 +208,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     font-size: 11px;
     line-height: 1.8;
     text-align: center;
+}
+
+.person-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid #38414a;
+    border-radius: 50%;
+    background: #191e23;
+    color: #c79b4c;
+    font-family: Georgia, "Times New Roman", serif;
 }
 
 .person-row {
@@ -721,9 +387,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     margin: 0 0 5px;
     padding: 0;
     color: #e7e0d5;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
-    font-weight: 600;
 }
 
 .chat-person p {
@@ -884,6 +547,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     line-height: 1.6;
 }
 
+.message-composer.locked textarea { opacity: .5; cursor: not-allowed; }
+.message-composer.locked .send-btn { opacity: .5; cursor: not-allowed; }
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -897,100 +563,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 /* ===================== RESPONSIVE ===================== */
+/* Sidebar / topbar / page padding responsive rules live in question.css */
 
 @media (max-width: 1000px) {
-    .msg-sidebar {
-        width: 220px;
-    }
-
-    .msg-main {
-        margin-left: 220px;
-    }
-
-    .msg-topbar {
-        padding-right: 22px;
-        padding-left: 22px;
-    }
-
-    .msg-content {
-        padding: 30px 22px 25px;
-    }
-
     .messenger {
         grid-template-columns: minmax(220px, 275px) minmax(0, 1fr);
     }
 }
 
 @media (max-width: 750px) {
-    .msg-sidebar {
-        position: relative;
-        inset: auto;
-        width: 100%;
-        height: auto;
-        min-height: 0;
-        padding: 18px;
-        border-right: 0;
-        border-bottom: 1px solid #272d33;
-        overflow: visible;
-    }
-
-    .logo-area {
-        margin-bottom: 18px;
-    }
-
-    .new-question-button {
-        margin-bottom: 18px;
-    }
-
-    .msg-nav {
-        flex-direction: row;
-        gap: 4px;
-        padding-bottom: 3px;
-        overflow-x: auto;
-    }
-
-    .msg-nav a {
-        flex: 0 0 auto;
-        width: auto;
-        min-height: 38px;
-        padding: 0 11px;
-        white-space: nowrap;
-    }
-
-    .sidebar-section {
-        min-width: 0;
-    }
-
-    .msg-profile {
-        margin-top: 15px;
-    }
-
-    .msg-main {
-        min-width: 0;
-        margin-left: 0;
-    }
-
-    .msg-topbar {
-        min-height: 58px;
-        padding: 11px 18px;
-    }
-
-    .msg-content {
-        padding: 27px 18px 22px;
-    }
-
-    .page-intro h1 {
-        font-size: 23px;
-    }
-
     .messenger {
         grid-template-columns: minmax(150px, 34%) minmax(0, 1fr);
         height: calc(100vh - 350px);
         min-height: 420px;
-        margin-top: 20px;
     }
-}
 
+    /* compact messenger (previously leaked outside the media query) */
     .panel-heading { gap: 5px; padding: 12px 9px; }
     .panel-heading h2 { font-size: 14px; }
     .panel-heading .eyebrow { font-size: 7px; letter-spacing: 1px; }
@@ -1007,7 +595,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     .person-role { font-size: 8px; }
     .chat-header { min-height: 62px; gap: 7px; padding: 9px; }
     .chat-header .person-avatar { width: 30px; height: 30px; }
-    .chat-person h2 { font-size: 11px; }
+    .msg-page .chat-person h2 { font-size: 11px; }
     .chat-person p { font-size: 9px; }
     .private-label { display: none; }
     .chat-messages { padding: 15px 9px; }
@@ -1022,13 +610,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     .chat-empty h2 { font-size: 17px; }
     .chat-empty p { font-size: 10px; }
     .primary-btn { min-height: 33px; padding: 0 9px; font-size: 10px; }
-
+}
 
 @media (max-width: 600px) {
-    .msg-content { padding: 23px 12px 20px; }
-    .topbar-label { font-size: 7px; }
-    .topbar-current { font-size: 10px; }
-
     .messenger {
         grid-template-columns: minmax(105px, 32%) minmax(0, 1fr);
         height: calc(100vh - 325px);
@@ -1043,20 +627,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 450px) {
-    .msg-sidebar { padding: 14px 9px 10px; }
-    .logo-area { padding: 0 4px; }
-    .logo-piece { width: 35px; height: 35px; margin-right: 9px; font-size: 18px; }
-    .logo-text h1 { font-size: 16px; }
-    .logo-text span { font-size: 7px; }
-    .msg-nav a { gap: 6px; min-height: 36px; padding: 0 8px; font-size: 11px; }
-    .msg-topbar { padding: 10px 12px; }
-    .topbar-label { display: none; }
-    .topbar-divider { margin-left: 0; }
-    .topbar-right a { font-size: 10px; letter-spacing: 1px; }
-    .msg-content { padding: 21px 10px 18px; }
-    .page-intro h1 { font-size: 22px; }
-    .page-intro p { font-size: 10px; }
-
     .messenger {
         grid-template-columns: 86px minmax(0, 1fr);
         height: calc(100vh - 310px);
@@ -1082,7 +652,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     .unread-badge { width: max-content; min-width: 16px; height: 16px; margin: 5px auto 0; }
     .chat-header { gap: 5px; padding: 8px 5px; }
     .chat-header .person-avatar { width: 26px; height: 26px; font-size: 9px; }
-    .chat-person h2 { font-size: 10px; }
+    .msg-page .chat-person h2 { font-size: 10px; }
     .chat-person p { font-size: 8px; }
     .chat-messages { gap: 10px; padding: 11px 5px; }
     .message-line { max-width: 96%; }
@@ -1097,11 +667,4 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     .chat-empty h2 { font-size: 14px; }
     .chat-empty p { margin-bottom: 12px; font-size: 9px; }
     .primary-btn { min-height: 29px; padding: 0 6px; font-size: 9px; }
-    .msg-profile { gap: 7px; }
-    .msg-profile .user-avatar { width: 30px; height: 30px; font-size: 10px; }
-    .user-information strong { font-size: 10px; }
-    .user-information span { font-size: 8px; }
 }
-
-.message-composer.locked textarea { opacity: .5; cursor: not-allowed; }
-.message-composer.locked .send-btn { opacity: .5; cursor: not-allowed; }
