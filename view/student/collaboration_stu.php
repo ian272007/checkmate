@@ -16,7 +16,8 @@ $postAction = $_POST["action"] ?? "";
 
 $isAjax =
     in_array($getAction, ["search", "summary"], true) ||
-    $postAction === "send";
+    $postAction === "send" ||
+    (($_POST["ajax"] ?? "") === "1");
 
 if (empty($_SESSION["student_id"])) {
     if ($isAjax) {
@@ -65,7 +66,7 @@ function collabStatus($status): string
     return in_array($key, ["accepted", "rejected"], true) ? $key : "pending";
 }
 
-/* Changes whenever a request is added or its status changes */
+/* Changes whenever a request is added, answered or cancelled */
 function collabSignature(array $rows): string
 {
     $parts = [];
@@ -77,6 +78,28 @@ function collabSignature(array $rows): string
     sort($parts);
 
     return md5(implode("|", $parts));
+}
+
+/* One cheap query used by BOTH the live check and the page itself,
+   so the two signatures can never disagree. */
+function collabSignatureFor(mysqli $conn, int $uid): string
+{
+    $stmt = $conn->prepare(
+        "SELECT collaboration_id, status
+         FROM collaborations
+         WHERE requester_id = ? OR receiver_id = ?"
+    );
+
+    if (!$stmt) {
+        throw new Exception("prepare failed");
+    }
+
+    $stmt->bind_param("ii", $uid, $uid);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return collabSignature($rows);
 }
 
 function csrfOk(string $sent): bool
@@ -92,23 +115,11 @@ function csrfOk(string $sent): bool
 
 /* Live summary (used to refresh the page when something changes) */
 if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "summary") {
+    // Release the session lock so polling never blocks other requests.
+    session_write_close();
+
     try {
-        $stmt = $conn->prepare(
-            "SELECT collaboration_id, status
-             FROM collaborations
-             WHERE requester_id = ? OR receiver_id = ?"
-        );
-
-        if (!$stmt) {
-            throw new Exception("prepare failed");
-        }
-
-        $stmt->bind_param("ii", $user_id, $user_id);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        jsonOut(["ok" => true, "signature" => collabSignature($rows)]);
+        jsonOut(["ok" => true, "signature" => collabSignatureFor($conn, $user_id)]);
     } catch (Throwable $ex) {
         jsonOut(["ok" => false, "error" => "Unable to check updates."], 500);
     }
@@ -116,6 +127,8 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "summary") {
 
 /* Search students */
 if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
+    session_write_close();
+
     $q = trim((string)($_GET["q"] ?? ""));
     $questionId = (int)($_GET["question_id"] ?? 0);
     $like = "%" . $q . "%";
@@ -137,7 +150,17 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
                         FROM collaborations c
                         WHERE (c.requester_id = ? AND c.receiver_id = u.id)
                            OR (c.requester_id = u.id AND c.receiver_id = ?)
-                    ) AS existing_status
+                    ) AS existing_status,
+                    (
+                        SELECT c2.collaboration_id
+                        FROM collaborations c2
+                        WHERE c2.requester_id = ?
+                          AND c2.receiver_id = u.id
+                          AND c2.question_id = ?
+                          AND c2.status = 'Pending'
+                        ORDER BY c2.collaboration_id DESC
+                        LIMIT 1
+                    ) AS cancel_id
              FROM users u
              WHERE u.id <> ?
                AND LOWER(TRIM(u.role)) = 'student'
@@ -157,12 +180,14 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
         }
 
         $stmt->bind_param(
-            "iiiiiisssss",
+            "iiiiiiiisssss",
             $questionId,
             $questionId,
             $user_id,
             $user_id,
             $user_id,
+            $user_id,
+            $questionId,
             $user_id,
             $like,
             $like,
@@ -189,7 +214,11 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
                 "year_level" => (string)($row["year_level"] ?? ""),
                 "status" => $row["existing_status"] === null
                     ? null
-                    : collabStatus($row["existing_status"])
+                    : collabStatus($row["existing_status"]),
+                /* set only when YOU sent a still-pending request (can be cancelled) */
+                "cancel_id" => $row["cancel_id"] === null
+                    ? null
+                    : (int)$row["cancel_id"]
             ];
         }
 
@@ -327,44 +356,85 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "send") {
 }
 
 /* =========================================================
-   ACCEPT / REJECT A REQUEST SENT TO THIS STUDENT
+   ACCEPT / REJECT (receiver) AND CANCEL (sender)
+   Works with AJAX (ajax=1 -> JSON) and as a normal form
+   (redirect) if JavaScript is unavailable.
    ========================================================= */
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $collabId = (int)($_POST["collaboration_id"] ?? 0);
     $action = $_POST["action"] ?? "";
+    $ajax = ($_POST["ajax"] ?? "") === "1";
     $result = "failed";
 
     if (
         csrfOk((string)($_POST["csrf"] ?? "")) &&
         $collabId > 0 &&
-        in_array($action, ["accept", "reject"], true)
+        in_array($action, ["accept", "reject", "cancel"], true)
     ) {
-        $newStatus = $action === "accept" ? "Accepted" : "Rejected";
-
         try {
-            // Only the receiver can answer, and only while it is still pending.
-            $stmt = $conn->prepare(
-                "UPDATE collaborations
-                 SET status = ?
-                 WHERE collaboration_id = ?
-                   AND receiver_id = ?
-                   AND status = 'Pending'"
-            );
+            if ($action === "cancel") {
+                // Only the sender can cancel, and only while it is still pending.
+                $stmt = $conn->prepare(
+                    "DELETE FROM collaborations
+                     WHERE collaboration_id = ?
+                       AND requester_id = ?
+                       AND status = 'Pending'"
+                );
 
-            if ($stmt) {
-                $stmt->bind_param("sii", $newStatus, $collabId, $user_id);
-                $stmt->execute();
+                if ($stmt) {
+                    $stmt->bind_param("ii", $collabId, $user_id);
+                    $stmt->execute();
 
-                if ($stmt->affected_rows > 0) {
-                    $result = strtolower($newStatus);
+                    if ($stmt->affected_rows > 0) {
+                        $result = "cancelled";
+                    }
+
+                    $stmt->close();
                 }
+            } else {
+                $newStatus = $action === "accept" ? "Accepted" : "Rejected";
 
-                $stmt->close();
+                // Only the receiver can answer, and only while it is still pending.
+                $stmt = $conn->prepare(
+                    "UPDATE collaborations
+                     SET status = ?
+                     WHERE collaboration_id = ?
+                       AND receiver_id = ?
+                       AND status = 'Pending'"
+                );
+
+                if ($stmt) {
+                    $stmt->bind_param("sii", $newStatus, $collabId, $user_id);
+                    $stmt->execute();
+
+                    if ($stmt->affected_rows > 0) {
+                        $result = strtolower($newStatus);
+                    }
+
+                    $stmt->close();
+                }
             }
         } catch (Throwable $ex) {
             $result = "failed";
         }
+    }
+
+    if ($ajax) {
+        $messages = [
+            "accepted"  => "Request accepted. The collaboration is now open.",
+            "rejected"  => "Request rejected.",
+            "cancelled" => "Request cancelled."
+        ];
+
+        if ($result === "failed") {
+            jsonOut([
+                "ok" => false,
+                "error" => "That request could not be updated. It may already have been answered or cancelled."
+            ], 409);
+        }
+
+        jsonOut(["ok" => true, "result" => $result, "message" => $messages[$result]]);
     }
 
     header("Location: collaboration_stu.php?updated=" . $result);
@@ -395,6 +465,16 @@ try {
     }
 } catch (Throwable $ex) {
     $myQuestions = [];
+}
+
+/* Signature is read BEFORE the list, so if something changes in between
+   the next live check simply refreshes again (never the other way round). */
+$signature = "";
+
+try {
+    $signature = collabSignatureFor($conn, $user_id);
+} catch (Throwable $ex) {
+    $signature = "";
 }
 
 /* Every collaboration this student is part of */
@@ -459,7 +539,11 @@ foreach ($collabs as $c) {
 }
 
 $totalCollabs = count($collabs);
-$signature = collabSignature($collabs);
+
+if ($signature === "") {
+    $signature = collabSignature($collabs);
+}
+
 $updated = $_GET["updated"] ?? "";
 ?>
 <!DOCTYPE html>
@@ -474,7 +558,8 @@ $updated = $_GET["updated"] ?? "";
     <script src="../../asset/js/user_menu.js" defer></script>
     <link rel="stylesheet" href="../../asset/css/question.css">
     <link rel="stylesheet" href="../../asset/css/collaboration_stu.css">
-    <link rel="stylesheet" href="../../asset/css/collaboration_find.css">
+    <link rel="stylesheet"
+          href="../../asset/css/collaboration_find.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/collaboration_find.css') ?>">
 </head>
 <body>
 
@@ -529,7 +614,7 @@ $updated = $_GET["updated"] ?? "";
             <strong>
                 <?= e(trim(($user["first_name"] ?? "") . " " . ($user["last_name"] ?? "")) ?: "Student") ?>
             </strong>
-            <span><?= e($user["course"]) ?> <br> <?= e($user["student_id"]) ?></span>
+            <span><?= e($user["course"]) ?> · <?= e($user["student_id"]) ?></span>
         </div>
         <button class="user-more" type="button" aria-label="More options">⋮</button>
     </div>
@@ -567,11 +652,18 @@ $updated = $_GET["updated"] ?? "";
             <div class="form-message form-message-success">
                 Request rejected.
             </div>
+        <?php elseif ($updated === "cancelled"): ?>
+            <div class="form-message form-message-success">
+                Request cancelled.
+            </div>
         <?php elseif ($updated === "failed"): ?>
             <div class="form-message form-message-error">
-                That request could not be updated. It may already have been answered.
+                That request could not be updated. It may already have been answered or cancelled.
             </div>
         <?php endif; ?>
+
+        <!-- Live feedback for accept / reject / cancel (filled by JavaScript) -->
+        <div id="collabFlash" class="form-message" role="status" aria-live="polite" hidden></div>
 
         <div class="my-summary">
 
@@ -749,27 +841,43 @@ $updated = $_GET["updated"] ?? "";
                                         <span><?= e($dateText) ?></span>
                                     </div>
 
-                                    <?php if ($isReceiver && $key === "pending"): ?>
+                                    <?php if ($key === "pending"): ?>
                                         <div class="collab-actions">
 
-                                            <form method="POST">
-                                                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-                                                <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
-                                                <input type="hidden" name="action" value="accept">
-                                                <button type="submit" class="collab-btn accept">
-                                                    ✓ Accept
-                                                </button>
-                                            </form>
+                                            <?php if ($isReceiver): ?>
 
-                                            <form method="POST"
-                                                  onsubmit="return confirm('Reject this collaboration request?');">
-                                                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-                                                <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
-                                                <input type="hidden" name="action" value="reject">
-                                                <button type="submit" class="collab-btn reject">
-                                                    ✕ Reject
-                                                </button>
-                                            </form>
+                                                <form method="POST" class="collab-form">
+                                                    <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                                                    <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
+                                                    <input type="hidden" name="action" value="accept">
+                                                    <button type="submit" class="collab-btn accept">
+                                                        ✓ Accept
+                                                    </button>
+                                                </form>
+
+                                                <form method="POST" class="collab-form"
+                                                      data-confirm="Reject this collaboration request?">
+                                                    <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                                                    <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
+                                                    <input type="hidden" name="action" value="reject">
+                                                    <button type="submit" class="collab-btn reject">
+                                                        ✕ Reject
+                                                    </button>
+                                                </form>
+
+                                            <?php else: ?>
+
+                                                <form method="POST" class="collab-form"
+                                                      data-confirm="Cancel this collaboration request?">
+                                                    <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                                                    <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
+                                                    <input type="hidden" name="action" value="cancel">
+                                                    <button type="submit" class="collab-btn cancel">
+                                                        ✕ Cancel request
+                                                    </button>
+                                                </form>
+
+                                            <?php endif; ?>
 
                                         </div>
                                     <?php endif; ?>
@@ -874,7 +982,7 @@ $updated = $_GET["updated"] ?? "";
     };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../../asset/js/collaboration_stu.js"></script>
+<script src="../../asset/js/collaboration_stu.js?v=<?= (int) @filemtime(__DIR__ . '/../../asset/js/collaboration_stu.js') ?>"></script>
 </body>
 </html>
 

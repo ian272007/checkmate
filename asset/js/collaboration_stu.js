@@ -2,8 +2,9 @@
    Collaboration page
    - filter tabs + search over your requests
    - expand / collapse details
-   - Find a peer: search students and send a request
-   - live refresh when a request is added or answered
+   - Find a peer: search students, send and cancel requests
+   - Accept / Reject / Cancel without reloading the page
+   - live refresh for BOTH students (checks every 2 seconds)
    ========================================================= */
 
 (() => {
@@ -14,15 +15,21 @@
         csrf: ""
     };
 
+    const POLL_MS = 2000;
+
     const $ = id => document.getElementById(id);
 
     const collabList = $("collabList");
     const collabSearch = $("searchCollaborations");
     const tabsBox = document.querySelector(".filter-tabs");
     const summaryBox = document.querySelector(".my-summary");
+    const flashBox = $("collabFlash");
 
     let collabFilter = "all";
     let refreshing = false;
+    let refreshQueued = false;
+    let checking = false;
+    let flashTimer;
 
     function esc(value) {
         return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -43,6 +50,46 @@
             parts[0].charAt(0) +
             (parts.length > 1 ? parts[parts.length - 1].charAt(0) : "")
         ).toUpperCase();
+    }
+
+    function flash(message, ok = true) {
+        if (!flashBox) return;
+
+        flashBox.textContent = message;
+        flashBox.className =
+            "form-message " +
+            (ok ? "form-message-success" : "form-message-error");
+        flashBox.hidden = false;
+
+        clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => {
+            flashBox.hidden = true;
+        }, 4000);
+    }
+
+    /* POST helper: always asks for JSON back */
+    async function postAction(fields) {
+        const response = await fetch(cfg.url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            body: new URLSearchParams({
+                ...fields,
+                csrf: cfg.csrf,
+                ajax: "1"
+            }).toString()
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Something went wrong. Please try again.");
+        }
+
+        return data;
     }
 
 
@@ -124,7 +171,7 @@
 
             if (!header || !collabList.contains(header)) return;
 
-            // Accept / Reject buttons must not open or close the row
+            // Accept / Reject / Cancel buttons must not open or close the row
             if (event.target.closest("button, a, form")) return;
 
             toggleCollab(header);
@@ -140,13 +187,52 @@
                 toggleCollab(header);
             }
         });
+
+        /* Accept / Reject / Cancel: no page reload */
+        collabList.addEventListener("submit", async event => {
+            const form = event.target.closest(".collab-form");
+
+            if (!form) return;
+
+            event.preventDefault();
+
+            const question = form.dataset.confirm;
+
+            if (question && !window.confirm(question)) return;
+
+            const buttons = form
+                .closest(".collab-actions")
+                .querySelectorAll("button");
+
+            buttons.forEach(button => { button.disabled = true; });
+
+            try {
+                const data = await postAction({
+                    action: form.elements.action.value,
+                    collaboration_id: form.elements.collaboration_id.value
+                });
+
+                flash(data.message || "Done.");
+            } catch (error) {
+                flash(error.message, false);
+            }
+
+            // Success or not, show what the server now says
+            await refreshList();
+        });
     }
 
 
     /* ---------- Live refresh ---------- */
 
-        async function refreshList() {
-        if (refreshing || !collabList) return;
+    async function refreshList() {
+        if (!collabList) return;
+
+        // A refresh is already running: run once more right after it
+        if (refreshing) {
+            refreshQueued = true;
+            return;
+        }
 
         refreshing = true;
 
@@ -200,17 +286,24 @@
             syncTabs();
             applyCollabFilters();
 
-            // Keep the "Find a peer" list in sync (Collaborating / Pending tags)
-            if (typeof loadStudents === "function") loadStudents();
+            // Keep the "Find a peer" list in sync (Pending / Collaborating tags)
+            loadStudents();
         } catch {
             /* try again on the next check */
         } finally {
             refreshing = false;
+
+            if (refreshQueued) {
+                refreshQueued = false;
+                refreshList();
+            }
         }
     }
 
     async function checkForChanges() {
-        if (document.hidden || !collabList) return;
+        if (checking || !collabList) return;
+
+        checking = true;
 
         try {
             const response = await fetch(`${cfg.url}?action=summary`, {
@@ -228,14 +321,19 @@
             }
         } catch {
             /* ignore network hiccups */
+        } finally {
+            checking = false;
         }
     }
 
-    window.setInterval(checkForChanges, 5000);
+    // Keeps running even when the tab is in the background
+    window.setInterval(checkForChanges, POLL_MS);
 
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden) checkForChanges();
     });
+
+    window.addEventListener("focus", checkForChanges);
 
 
     /* ---------- Find a peer ---------- */
@@ -286,12 +384,22 @@
                 student.student_id
             ].filter(Boolean).join(" · ");
 
-            const action = student.status
-                ? statusTag(student.status)
-                : `<button type="button" class="find-send"
-                           data-receiver="${Number(student.id)}">
-                       Send request
-                   </button>`;
+            let action;
+
+            if (!student.status) {
+                action = `<button type="button" class="find-send"
+                                  data-receiver="${Number(student.id)}">
+                              Send request
+                          </button>`;
+            } else if (student.status === "pending" && student.cancel_id) {
+                action = `${statusTag("pending")}
+                          <button type="button" class="find-cancel"
+                                  data-collab="${Number(student.cancel_id)}">
+                              Cancel
+                          </button>`;
+            } else {
+                action = statusTag(student.status);
+            }
 
             return `
                 <div class="find-row">
@@ -302,7 +410,7 @@
                         <span>${esc(meta)}</span>
                     </div>
 
-                    ${action}
+                    <div class="find-actions">${action}</div>
                 </div>
             `;
         }).join("");
@@ -334,7 +442,12 @@
                 throw new Error(data.error || "Unable to search students.");
             }
 
+            // Keep the scroll position when the list is refreshed live
+            const scrollTop = findResults.scrollTop;
+
             renderStudents(data.users || []);
+
+            findResults.scrollTop = scrollTop;
         } catch (error) {
             if (token !== searchToken) return;
 
@@ -355,45 +468,47 @@
         });
 
         findResults.addEventListener("click", async event => {
-            const button = event.target.closest(".find-send");
+            const sendButton = event.target.closest(".find-send");
+            const cancelButton = event.target.closest(".find-cancel");
 
-            if (!button) return;
+            /* ----- Send request ----- */
+            if (sendButton) {
+                sendButton.disabled = true;
+                sendButton.textContent = "Sending...";
 
-            button.disabled = true;
-            button.textContent = "Sending...";
-
-            try {
-                const response = await fetch(cfg.url, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type":
-                            "application/x-www-form-urlencoded;charset=UTF-8"
-                    },
-                    body: new URLSearchParams({
+                try {
+                    const data = await postAction({
                         action: "send",
-                        csrf: cfg.csrf,
                         question_id: findQuestion.value,
-                        receiver_id: button.dataset.receiver
-                    }).toString()
-                });
+                        receiver_id: sendButton.dataset.receiver
+                    });
 
-                const data = await response.json().catch(() => ({}));
-
-                if (!response.ok || !data.ok) {
-                    throw new Error(
-                        data.error || "Could not send the request."
-                    );
+                    showFindAlert(data.message || "Request sent.", true);
+                } catch (error) {
+                    showFindAlert(error.message);
                 }
 
-                showFindAlert(data.message || "Request sent.", true);
-
-                await loadStudents();
                 await refreshList();
-            } catch (error) {
-                showFindAlert(error.message);
-                await loadStudents();
+                return;
+            }
+
+            /* ----- Cancel request ----- */
+            if (cancelButton) {
+                cancelButton.disabled = true;
+                cancelButton.textContent = "Cancelling...";
+
+                try {
+                    const data = await postAction({
+                        action: "cancel",
+                        collaboration_id: cancelButton.dataset.collab
+                    });
+
+                    showFindAlert(data.message || "Request cancelled.", true);
+                } catch (error) {
+                    showFindAlert(error.message);
+                }
+
+                await refreshList();
             }
         });
 
