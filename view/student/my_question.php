@@ -294,7 +294,7 @@ $waitingQuestions = $totalQuestions - $answeredQuestions;
                         $moreNames = count($answerers) - count($shownNames);
                         ?>
 
-                        <div class="my-question" data-status="<?= $status ?>">
+                        <div class="my-question" data-status="<?= $status ?>" data-qid="<?= $qid ?>">
 
                             <div class="my-question-header"
                                  role="button"

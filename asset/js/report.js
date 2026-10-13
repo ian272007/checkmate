@@ -347,7 +347,8 @@ function deleteReport(id) {
     }
 
     var sure = confirm("Delete report " + formatId(r.id) + "?\n\n" + r.reason +
-                       "\n\nThis only deletes the report. The question stays.");
+                       "\n\nThis will also permanently delete the reported question, " +
+                       "its answers, and all other reports about it.");
 
     if (sure === false) {
         return;
@@ -360,9 +361,14 @@ function deleteReport(id) {
             return;
         }
 
+        var deletedQuestionId = r.question_id;
         var newList = [];
+
         for (var i = 0; i < reports.length; i++) {
-            if (reports[i].id !== id) {
+            var sameReport = reports[i].id === id;
+            var sameQuestion = deletedQuestionId && reports[i].question_id === deletedQuestionId;
+
+            if (!sameReport && !sameQuestion) {
                 newList.push(reports[i]);
             }
         }
@@ -370,7 +376,7 @@ function deleteReport(id) {
 
         updatePendingBadge();
         showTable();
-        showToast("Report " + formatId(id) + " was deleted.");
+        showToast("Report and question were deleted.");
     });
 }
 

@@ -142,12 +142,17 @@ $csrf = $_SESSION["messages_csrf"];
         </a>
     </div>
 
+    <!-- SIDEBAR USER: same markup as questions.php -->
     <div class="sidebar-user">
         <div class="user-avatar"><?= e($initials) ?></div>
 
         <div class="user-information">
             <strong><?= e($fullName) ?></strong>
-            <span><?= e($course ?: "Student") ?> · <?= e($user["student_id"]) ?></span>
+
+            <span>
+                <?= e($course ?: "Student") ?><br>
+                <?= e($user["student_id"] ?? "") ?>
+            </span>
         </div>
 
         <button class="user-more" type="button" aria-label="More options">⋮</button>

@@ -815,6 +815,7 @@ $displayName = trim(
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../asset/js/question.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question.js') ?>"></script>
+<script src="../../asset/js/live_questions.js?v=<?= filemtime(__DIR__ . '/../../asset/js/live_questions.js') ?>"></script>
 
 </body>
 </html>

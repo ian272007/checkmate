@@ -12,7 +12,7 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn->set_charset("utf8mb4");
 
 // folder where uploaded attachments are saved (CHANGE this to your real upload folder)
-$uploadDir = __DIR__ . "/../../uploads/";
+$uploadDir = __DIR__ . "/../../uploads/questions/";
 
 function reply($success, $message, $code = 200) {
     http_response_code($code);
