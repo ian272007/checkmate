@@ -834,3 +834,14 @@
     font-weight: bold;
     line-height: 1;
 }
+
+/* highlight for a report that just arrived */
+@keyframes newRowFlash {
+    from { background: #2a2314; }
+    to   { background: transparent; }
+}
+
+.data-table tbody tr.new-row {
+    animation: newRowFlash 3s ease-out;
+    box-shadow: inset 2px 0 0 #d2aa60;
+}

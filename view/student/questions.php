@@ -264,6 +264,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 /* =========================================================
    COMMUNITY QUESTIONS (posted by OTHER students only)
    Your own questions are in "My Questions".
+   already_reported = 1 when YOU already reported that question.
    ========================================================= */
 
 $questions = [];
@@ -279,7 +280,12 @@ $stmt = $conn->prepare(
     q.attachment,
     u.first_name,
     u.last_name,
-    u.student_id
+    u.student_id,
+    EXISTS(
+        SELECT 1 FROM reports rp
+        WHERE rp.question_id = q.question_id
+          AND rp.reporter_id = ?
+    ) AS already_reported
 FROM questions q
 INNER JOIN users u ON q.user_id = u.id
 WHERE q.status = 'Active'
@@ -291,7 +297,7 @@ if (!$stmt) {
     die("Question query failed: " . $conn->error);
 }
 
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -310,6 +316,17 @@ $notices = [
     "answer_denied"   => ["error", "You can only answer other students' active questions."],
     "answer_csrf"     => ["error", "Security token invalid. Please refresh the page."],
     "answer_failed"   => ["error", "Your answer could not be posted. Please try again."]
+];
+
+// Reasons shown in the three-dot report menu
+// (must match $allowedReasons in report_question_api.php)
+$reportReasons = [
+    "Inappropriate question",
+    "Incorrect subject",
+    "Spam",
+    "Inappropriate Answer",
+    "Harassment or Bullying",
+    "Misleading Information"
 ];
 
 $noticeKey = (string)($_GET["notice"] ?? "");
@@ -642,7 +659,7 @@ $displayName = trim(
                 >
             </div>
 
-            <div class="questions-list" id="questionsList">
+            <div class="questions-list" id="questionsList" data-csrf="<?= e($csrf) ?>">
 
                 <?php if (count($questions) > 0): ?>
 
@@ -655,9 +672,38 @@ $displayName = trim(
                             ($row["first_name"] ?? "") . " " .
                             ($row["last_name"] ?? "")
                         );
+
+                        $alreadyReported = !empty($row["already_reported"]);
                         ?>
 
                         <div class="question-card" id="question-<?= $qid ?>">
+
+                            <!-- REPORT MENU (three dots, top right) -->
+                            <div class="report-menu">
+                                <button
+                                    type="button"
+                                    class="report-dots"
+                                    aria-label="Report options"
+                                    aria-haspopup="true"
+                                    aria-expanded="false"
+                                >⋮</button>
+
+                                <div class="report-dropdown" hidden>
+                                    <?php if ($alreadyReported): ?>
+                                        <div class="report-done">✓ You already reported this question</div>
+                                    <?php else: ?>
+                                        <div class="report-dropdown-title">Report this question</div>
+
+                                        <?php foreach ($reportReasons as $reason): ?>
+                                            <button
+                                                type="button"
+                                                class="report-option"
+                                                data-reason="<?= e($reason) ?>"
+                                            ><?= e($reason) ?></button>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
 
                             <div class="question-icon">♟</div>
 

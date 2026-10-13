@@ -1,6 +1,6 @@
 <?php
 // report_api.php - called by report.js
-// Handles: status (change a report's status) and delete (delete a report).
+// Handles: list (live updates), status (change a report's status) and delete.
 // Always answers with JSON: { "success": true/false, "message": "..." }
 
 session_start();
@@ -18,9 +18,35 @@ function reply($success, $message, $extra = [], $code = 200) {
 }
 
 // ---------- 1. who is allowed ----------
-// (CHANGE 'role' if your login saves the role under a different session key)
 if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
     reply(false, "Not allowed.", [], 403);
+}
+
+// ---------- LIVE LIST (called every few seconds by report.js) ----------
+if ($_SERVER["REQUEST_METHOD"] === "GET" && ($_GET["action"] ?? "") === "list") {
+
+    // release the session lock so these frequent requests
+    // don't make other pages wait
+    session_write_close();
+
+    require_once __DIR__ . "/report_data.php";
+
+    try {
+        [$reports, $reasons] = loadReports($conn);
+
+        $pending = 0;
+        foreach ($reports as $r) {
+            if ($r["status"] === "Pending") { $pending++; }
+        }
+
+        reply(true, "OK", [
+            "reports" => $reports,
+            "reasons" => $reasons,
+            "pending" => $pending
+        ]);
+    } catch (Throwable $e) {
+        reply(false, "Could not load reports.", [], 500);
+    }
 }
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {

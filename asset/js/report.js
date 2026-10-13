@@ -8,6 +8,9 @@ var currentPage = 1;
 // the report that is open in the popup
 var viewingId = null;
 
+// ids of reports that just arrived (they get a highlight)
+var highlighted = {};
+
 
 // ---------- 2. GET ELEMENTS ----------
 var toast = document.getElementById("toast");
@@ -201,7 +204,7 @@ function showTable() {
         var r = result[j];
         var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        html += "<tr>";
+        html += "<tr" + (highlighted[r.id] ? " class='new-row'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.reason) + "</td>";
         html += "<td class='title-cell' title=\"" + makeSafe(r.question) + "\">" + makeSafe(r.question) + "</td>";
@@ -456,5 +459,116 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-// ---------- 11. START ----------
+// ---------- 11. LIVE UPDATES (polling) ----------
+var POLL_MS = 3000;          // 3 seconds
+var polling = false;
+var lastSignature = JSON.stringify(reports);
+var lastReasons = "";
+
+// rebuilds the "All Reasons" dropdown, but keeps the admin's choice
+function refreshReasonFilter(list) {
+
+    var joined = list.join("|");
+    if (joined === lastReasons) {
+        return;
+    }
+    lastReasons = joined;
+
+    var current = reasonFilter.value;
+    var html = "<option value='all'>All Reasons</option>";
+
+    for (var i = 0; i < list.length; i++) {
+        html += "<option value=\"" + makeSafe(list[i]) + "\">" + makeSafe(list[i]) + "</option>";
+    }
+
+    reasonFilter.innerHTML = html;
+    reasonFilter.value = current;
+
+    // the chosen reason no longer exists
+    if (reasonFilter.value !== current) {
+        reasonFilter.value = "all";
+    }
+}
+
+function checkForUpdates() {
+
+    // don't pile up requests, and don't ask while the tab is hidden
+    if (polling || document.hidden) {
+        return;
+    }
+    polling = true;
+
+    fetch("report_api.php?action=list&_=" + Date.now(), { cache: "no-store" })
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+
+            if (!data.success) {
+                console.log("[polling] failed:", data.message);
+                return;
+            }
+
+            var signature = JSON.stringify(data.reports);
+            if (signature === lastSignature) {
+                return;   // nothing changed
+            }
+            lastSignature = signature;
+
+            // find reports we did not have before
+            var known = {};
+            for (var i = 0; i < reports.length; i++) {
+                known[reports[i].id] = true;
+            }
+
+            var newCount = 0;
+            for (var j = 0; j < data.reports.length; j++) {
+                var id = data.reports[j].id;
+                if (!known[id]) {
+                    highlighted[id] = true;
+                    newCount++;
+                    (function (reportId) {
+                        setTimeout(function () {
+                            delete highlighted[reportId];
+                            showTable();
+                        }, 6000);
+                    })(id);
+                }
+            }
+
+            reports = data.reports;
+
+            refreshReasonFilter(data.reasons);
+            updatePendingBadge();
+            showTable();
+
+            if (newCount > 0) {
+                showToast(newCount === 1 ? "New report received!" : newCount + " new reports received!");
+            }
+        })
+        .catch(function (err) {
+            console.log("[polling] error:", err);
+        })
+        .finally(function () {
+            polling = false;
+        });
+}
+
+setInterval(checkForUpdates, POLL_MS);
+
+// when the admin comes back to this tab, update immediately
+document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+        checkForUpdates();
+    }
+});
+
+
+// ---------- 12. START ----------
+lastReasons = Array.prototype.map.call(reasonFilter.options, function (o) {
+    return o.value;
+}).filter(function (v) {
+    return v !== "all";
+}).join("|");
+
 showTable();

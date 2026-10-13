@@ -6,7 +6,9 @@ if (searchInput) {
         const questions = document.querySelectorAll(".question-card");
 
         questions.forEach(function (question) {
-            const text = question.textContent.toLowerCase();
+            // Search only the question content, not the report menu text
+            const details = question.querySelector(".question-details");
+            const text = (details ? details : question).textContent.toLowerCase();
 
             if (text.includes(search)) {
                 question.style.display = "flex";
@@ -192,3 +194,139 @@ if (flashData) {
         );
     }
 }
+
+
+/* =========================================================
+   Report menu (three dots)
+   ========================================================= */
+
+const questionsList = document.getElementById("questionsList");
+let openReportMenu = null;
+
+function closeReportMenu() {
+    if (openReportMenu) {
+        openReportMenu.dropdown.hidden = true;
+        openReportMenu.button.setAttribute("aria-expanded", "false");
+        openReportMenu = null;
+    }
+}
+
+function placeReportMenu(button, dropdown) {
+    dropdown.hidden = false;
+
+    const rect = button.getBoundingClientRect();
+    const width = dropdown.offsetWidth;
+    const height = dropdown.offsetHeight;
+
+    // open below the dots, or above if there is no room
+    let top = rect.bottom + 6;
+    if (top + height > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - height - 6);
+    }
+
+    dropdown.style.top = top + "px";
+    dropdown.style.left = Math.max(8, rect.right - width) + "px";
+}
+
+function markReported(card) {
+    const dropdown = card.querySelector(".report-dropdown");
+
+    if (!dropdown) {
+        return;
+    }
+
+    dropdown.innerHTML = "";
+
+    const done = document.createElement("div");
+    done.className = "report-done";
+    done.textContent = "✓ You already reported this question";
+    dropdown.appendChild(done);
+}
+
+if (questionsList) {
+    const reportCsrf = questionsList.dataset.csrf || "";
+
+    questionsList.addEventListener("click", function (event) {
+
+        // open / close the three-dot menu
+        const dots = event.target.closest(".report-dots");
+
+        if (dots) {
+            event.stopPropagation();
+
+            const dropdown = dots
+                .closest(".report-menu")
+                .querySelector(".report-dropdown");
+
+            if (openReportMenu && openReportMenu.button === dots) {
+                closeReportMenu();
+                return;
+            }
+
+            closeReportMenu();
+            placeReportMenu(dots, dropdown);
+            dots.setAttribute("aria-expanded", "true");
+            openReportMenu = { button: dots, dropdown: dropdown };
+            return;
+        }
+
+        // choose a reason
+        const option = event.target.closest(".report-option");
+
+        if (!option) {
+            return;
+        }
+
+        const card = option.closest(".question-card");
+        const questionId = card.id.replace("question-", "");
+        const reason = option.dataset.reason;
+
+        if (!confirm('Report this question as "' + reason + '"?')) {
+            return;
+        }
+
+        option.disabled = true;
+
+        const body = new URLSearchParams();
+        body.append("question_id", questionId);
+        body.append("reason", reason);
+        body.append("csrf", reportCsrf);
+
+        fetch("report_question_api.php", { method: "POST", body: body })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                closeReportMenu();
+
+                if (data.success || data.already) {
+                    markReported(card);
+                }
+
+                showFlash(data.success ? "success" : "error", data.message);
+            })
+            .catch(function () {
+                closeReportMenu();
+                showFlash("error", "Something went wrong. Please try again.");
+            })
+            .finally(function () {
+                option.disabled = false;
+            });
+    });
+}
+
+// click anywhere else, press Esc, scroll or resize = close the menu
+document.addEventListener("click", function (event) {
+    if (openReportMenu && !openReportMenu.dropdown.contains(event.target)) {
+        closeReportMenu();
+    }
+});
+
+document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+        closeReportMenu();
+    }
+});
+
+window.addEventListener("scroll", closeReportMenu, true);
+window.addEventListener("resize", closeReportMenu);
