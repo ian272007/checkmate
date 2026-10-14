@@ -1,1435 +1,431 @@
+/* =========================================================
+   CHECKMATE — ADMIN DASHBOARD (content only)
+   The sidebar, top bar and toast are in admin_layout.css.
+   ========================================================= */
 
 
-        /* active sidebar item has a gold outline */
-        .sidebar-menu a.active {
-            background: #1d1a14;
-            border: 1px solid #6b5630;
-            color: #e2e5e8;
-        }
+/* =========================================================
+   WELCOME
+   ========================================================= */
 
-        /* hide the little gold line, the outline replaces it */
-        .sidebar-menu a.active::before {
-            display: none;
-        }
-
-       
-
-        /* bigger page title in the top bar */
-        .topbar-title {
-            font-size: 22px;
-        }
-
-        /* logout link (was inline style before) */
-        .logout {
-            color: #b08c4d;
-            font-size: 12px;
-            letter-spacing: 1.8px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .logout:hover {
-            color: #d2aa60;
-        }
-
-        /* status badges: square-ish with a dark tinted background */
-        .status {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-        }
-
-        .status.verified,
-        .status.done {
-            background: #16231e;
-        }
-
-        .status.pending,
-        .status.new {
-            background: #241e12;
-        }
-
-        
-
-        .sidebar-account {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0 12px 10px;
-    background: #111519;
+.welcome-section {
+    padding: 48px 40px 27px;
 }
 
-/* ---------- admin account: 3 dots (right side) + popup menu ---------- */
-
-.sidebar-account-user {
-    display: flex;
-    align-items: center;
+.welcome-small {
+    color: #b68c43;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
 }
 
-.account-menu-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-
-    width: 28px;
-    height: 28px;
-    margin-left: auto;
-    flex-shrink: 0;
-
-    background: transparent;
-
-    border: 1px solid transparent;
-    border-radius: 4px;
-
-    cursor: pointer;
-}
-
-.account-menu-btn span {
-    display: block;
-    width: 3px;
-    height: 3px;
-
-    background: #6d9b85;
-    border-radius: 50%;
-}
-
-.account-menu-btn:hover,
-.account-menu-btn.open {
-    background: #1d1a14;
-    border-color: #6b5630;
-}
-
-.account-menu-btn:hover span,
-.account-menu-btn.open span {
-    background: #d2aa60;
-}
-
-.account-menu {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(100% + 6px);
-
-    display: none;
-
-    background: #11161a;
-
-    border: 1px solid #292f34;
-    border-radius: 5px;
-
-    overflow: hidden;
-    z-index: 300;
-}
-
-.account-menu.show {
-    display: block;
-}
-
-.account-menu a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    padding: 11px 14px;
-
-    color: #d5d9dc;
-
-    font-size: 12px;
-    text-decoration: none;
-}
-
-.account-menu a:hover {
-    background: #151a1e;
-    color: #d2aa60;
-}
-
-.account-menu a + a {
-    border-top: 1px solid #242a2f;
-}
-
-.account-menu .menu-logout {
-    color: #d0865a;
-}
-
-.account-menu .menu-logout:hover {
-    color: #e59a6d;
-}
-
-.account-menu-icon {
-    width: 14px;
-    text-align: center;
-}
-
-/* =========================================
-   CHECKMATE ADMIN HOME
-   admin_home.css
-   ========================================= */
-
-
-/* =========================================
-   1. BASIC RESET
-   ========================================= */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html {
-    min-height: 100%;
-}
-
-body {
-    min-height: 100vh;
-
-    background: #0d1013;
-    color: #d9dde1;
-
-    font-family: Arial, Helvetica, sans-serif;
-
-    font-size: 14px;
-}
-
-
-/* =========================================
-   2. SIDEBAR
-   ========================================= */
-
-.sidebar {
-    position: fixed;
-
-    top: 0;
-    left: 0;
-
-    width: 235px;
-    height: 100vh;
-
-    background: #111519;
-
-    border-right: 1px solid #292f34;
-
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    z-index: 100;
-}
-
-
-/* Sidebar scrollbar */
-
-.sidebar::-webkit-scrollbar {
-    width: 5px;
-}
-
-.sidebar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-    background: #292f34;
-    border-radius: 10px;
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover {
-    background: #3a4148;
-}
-
-
-/* =========================================
-   3. LOGO
-   ========================================= */
-
-.logo {
-    height: 82px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 0 30px;
-
-    color: #d2aa60;
-
+.welcome-section h2 {
+    margin: 11px 0 0;
+    color: #e8e2d9;
     font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 20px;
-    font-weight: bold;
-
-    letter-spacing: 1.5px;
-}
-
-.logo span {
-    margin-right: 10px;
-
-    font-size: 25px;
-
-    color: #d2aa60;
-}
-
-
-/* =========================================
-   4. ADMINISTRATION LABEL
-   ========================================= */
-
-.admin-label {
-    padding: 0 30px;
-
-    margin-bottom: 28px;
-
-    color: #7f8992;
-
-    font-size: 10px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
-}
-
-
-/* =========================================
-   5. SIDEBAR SECTIONS
-   ========================================= */
-
-.sidebar-section {
-    margin-bottom: 28px;
-}
-
-.sidebar-title {
-    padding: 0 30px;
-
-    margin-bottom: 10px;
-
-    color: #67717a;
-
-    font-size: 11px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
-}
-
-
-/* =========================================
-   6. SIDEBAR MENU
-   ========================================= */
-
-.sidebar-menu {
-    margin: 0;
-    padding: 0;
-
-    list-style: none;
-}
-
-.sidebar-menu li {
-    margin: 2px 12px;
-
-    padding: 0;
-
-    list-style: none;
-}
-
-.sidebar-menu li::marker {
-    display: none;
-
-    content: "";
-}
-
-.sidebar-menu a {
-    position: relative;
-
-    display: flex;
-    align-items: center;
-
-    width: 100%;
-    min-height: 42px;
-
-    padding: 0 18px;
-
-    color: #89929a;
-
-    background: transparent;
-
-    border: none;
-
-    border-radius: 5px;
-
-    text-decoration: none;
-
-    font-family: Arial, Helvetica, sans-serif;
-
-    font-size: 14px;
-    font-weight: normal;
-
-    cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        color 0.2s ease;
-}
-
-.sidebar-menu a:hover {
-    background: #171c21;
-
-    color: #d7dce0;
-}
-
-.sidebar-menu a.active {
-    background: #1a2025;
-
-    color: #e2e5e8;
-}
-
-
-/* Active menu line */
-
-.sidebar-menu a.active::before {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    top: 11px;
-
-    width: 2px;
-    height: 20px;
-
-    background: #d2aa60;
-}
-
-
-/* =========================================
-   7. SIDEBAR ICONS
-   ========================================= */
-
-.menu-icon {
-    width: 25px;
-
-    margin-right: 5px;
-
-    color: #77818a;
-
-    font-size: 13px;
-
-    text-align: center;
-
-    flex-shrink: 0;
-}
-
-.sidebar-menu a.active .menu-icon {
-    color: #d2aa60;
-}
-
-
-/* =========================================
-   8. MENU COUNTS
-   ========================================= */
-
-.menu-count {
-    margin-left: auto;
-
-    color: #d2aa60;
-
-    font-size: 11px;
-}
-
-.menu-dot {
-    width: 5px;
-    height: 5px;
-
-    margin-left: auto;
-
-    background: #d2aa60;
-
-    border-radius: 50%;
-
-    flex-shrink: 0;
-}
-
-
-/* =========================================
-   9. SIDEBAR ADMIN ACCOUNT
-   ========================================= */
-
-.sidebar-account {
-    margin: 15px 12px 25px;
-
-    padding: 15px;
-
-    border-top: 1px solid #252b30;
-}
-
-.sidebar-account-user {
-    display: flex;
-    align-items: center;
-}
-
-.sidebar-account-avatar {
-    width: 32px;
-    height: 32px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    margin-right: 10px;
-
-    background: #252b30;
-
-    color: #d2aa60;
-
-    border-radius: 50%;
-
-    font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 13px;
-}
-
-.sidebar-account-info strong {
-    display: block;
-
-    color: #d9dde1;
-
-    font-size: 13px;
-
-    font-weight: normal;
-}
-
-.sidebar-account-info span {
-    display: block;
-
-    margin-top: 3px;
-
-    color: #68727b;
-
-    font-size: 11px;
-}
-
-
-/* =========================================
-   10. MAIN
-   ========================================= */
-
-.main {
-    min-height: 100vh;
-
-    margin-left: 235px;
-
-    background: #0d1013;
-}
-
-
-/* =========================================
-   11. TOP BAR
-   ========================================= */
-
-.topbar {
-    height: 70px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 0 40px;
-
-    background: #0d1013;
-
-    border-bottom: 1px solid #242a2f;
-}
-
-.topbar-left {
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 4px;
-}
-
-.topbar-label {
-    color: #707a83;
-
-    font-size: 10px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
-}
-
-.topbar-title {
-    color: #dfe3e6;
-
-    font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 16px;
-}
-
-
-/* =========================================
-   12. TOPBAR RIGHT
-   ========================================= */
-
-.topbar-right {
-    display: flex;
-    align-items: center;
-
-    gap: 20px;
-}
-
-
-
-
-/* =========================================
-   13. TOPBAR USER
-   ========================================= */
-
-.topbar-user {
-    width: 32px;
-    height: 32px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: #252b30;
-
-    color: #d2aa60;
-
-    border: 1px solid #343b41;
-
-    border-radius: 50%;
-
-    font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 13px;
-
-    cursor: pointer;
-   
-}
-
-.topbar-user:hover {
-    background: #2b3238;
-    border-color: #d2aa60;
-   
-}
-
-
-/* =========================================
-   14. CONTENT
-   ========================================= */
-
-.content {
-    width: 100%;
-
-    max-width: 1080px;
-
-    margin: 0 auto;
-
-    padding: 38px 40px 50px;
-}
-
-
-/* =========================================
-   15. WELCOME
-   ========================================= */
-
-.welcome {
-    margin-bottom: 30px;
-}
-
-.welcome-label {
-    margin-bottom: 8px;
-
-    color: #6e7881;
-
-    font-size: 11px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
-}
-
-.welcome-title {
-    color: #e1e4e7;
-
-    font-family: Georgia, "Times New Roman", serif;
-
     font-size: 30px;
-
-    font-weight: normal;
+    font-weight: 400;
+    line-height: 1.2;
 }
 
-.welcome-text {
-    margin-top: 7px;
-
-    color: #6e7780;
-
-    font-size: 13px;
-}
-
-
-/* =========================================
-   16. NOTICE
-   ========================================= */
-
-.notice {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 17px 20px;
-
-    margin-bottom: 30px;
-
-    background: #12171b;
-
-    border: 1px solid #302f29;
-
-    border-left: 2px solid #d2aa60;
-
-    border-radius: 5px;
-}
-
-.notice-left {
-    display: flex;
-    align-items: center;
-
-    gap: 13px;
-}
-
-.notice-icon {
-    color: #d2aa60;
-
-    font-size: 17px;
-}
-
-.notice-title {
-    color: #d6dade;
-
-    font-size: 13px;
-}
-
-.notice-text {
-    margin-top: 4px;
-
-    color: #69737b;
-
-    font-size: 11px;
-}
-
-.notice-button {
-    padding: 7px 13px;
-
-    background: transparent;
-
-    color: #c79d55;
-
-    border: 1px solid #5a4930;
-
-    border-radius: 4px;
-
-    font-size: 11px;
-
-    cursor: pointer;
-}
-
-.notice-button:hover {
-    background: #211d17;
-
-    border-color: #d2aa60;
+.welcome-section p {
+    margin: 10px 0 0;
+    color: #718398;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 
-/* =========================================
-   17. SECTION HEADING
-   ========================================= */
+/* =========================================================
+   DASHBOARD SECTION
+   Everything inside shares the same left/right edges,
+   so overview cards, recent reports and quick access line up.
+   ========================================================= */
 
-.section-heading {
-    margin-bottom: 13px;
+.dashboard-section {
+    padding: 0 40px 38px;
 }
 
-.section-label {
-    color: #64707a;
-
-    font-size: 10px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
+.quick-heading {
+    margin-bottom: 10px;
 }
 
-.section-title {
-    margin-top: 5px;
+.quick-heading-spaced {
+    margin-top: 34px;
+}
 
-    color: #dfe2e5;
+.heading-label {
+    color: #b68c43;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+}
 
-    font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 19px;
-
-    font-weight: normal;
+.dashboard-section .quick-heading h2 {
+    margin: 11px 0 0 !important;
+    padding: 0 !important;
+    color: #e8e2d9 !important;
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 30px !important;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
 }
 
 
-/* =========================================
-   18. OVERVIEW GRID
-   ========================================= */
+/* =========================================================
+   OVERVIEW CARDS
+   ========================================================= */
 
-.overview-grid {
+.stat-grid {
     display: grid;
-
-    grid-template-columns: repeat(4, 1fr);
-
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
-
-    margin-bottom: 35px;
+    margin-bottom: 10px;
 }
 
-.overview-card {
+.stat-card {
     padding: 18px;
-
-    background: #11161a;
-
-    border: 1px solid #292f34;
-
+    border: 1px solid #293139;
     border-radius: 5px;
-
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+    background: #10151a;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.overview-card:hover {
-    border-color: #3a4147;
-
-    transform: translateY(-2px);
+.stat-card:hover {
+    background: #13191e;
+    border-color: #3b454e;
 }
 
-.overview-card-label {
-    color: #68737c;
-
-    font-size: 10px;
-
-    letter-spacing: 1px;
-
+.stat-label {
+    color: #6e8295;
+    font-size: 9px;
+    letter-spacing: 1.3px;
     text-transform: uppercase;
 }
 
-.overview-card-number {
-    margin-top: 10px;
-
-    color: #dfe2e5;
-
+.stat-number {
+    margin-top: 12px;
+    color: #e8e2d9;
     font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 27px;
+    font-size: 28px;
+    line-height: 1.1;
 }
 
-.overview-card-description {
-    margin-top: 5px;
-
-    color: #5f6971;
-
-    font-size: 10px;
+.stat-description {
+    margin-top: 6px;
+    color: #687b8f;
+    font-size: 9px;
 }
 
 
-/* =========================================
-   19. PANEL GRID
-   ========================================= */
+/* =========================================================
+   RECENT REPORTS PANEL
+   ========================================================= */
 
-.panel-grid {
-  width: 80%;
-  
-
-}
-
-.panel {
-    background: #11161a;
-
-    border: 1px solid #292f34;
-
+.dashboard-panel {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #293139;
     border-radius: 5px;
-
+    background: #10151a;
     overflow: hidden;
 }
-
-
-/* =========================================
-   20. PANEL HEADER
-   ========================================= */
 
 .panel-header {
-    height: 71px;
-
+    min-height: 80px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    padding: 0 18px;
-
-    border-bottom: 1px solid #292f34;
+    padding: 15px 17px;
+    border-bottom: 1px solid #293139;
 }
 
 .panel-label {
-    margin-bottom: 5px;
-
-    color: #68727b;
-
-    font-size: 10px;
-
-    letter-spacing: 2px;
-
-    text-transform: uppercase;
+    margin-bottom: 6px;
+    color: #6e8295;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
 }
 
-.panel-heading {
-    color: #dfe2e5;
-
+.panel-header h3 {
+    margin: 0;
+    color: #ddd7ce;
     font-family: Georgia, "Times New Roman", serif;
-
     font-size: 17px;
-
-    font-weight: normal;
+    font-weight: 400;
 }
 
-.panel-link {
-    color: #9b7740;
+.view-all {
+    color: #b88c46 !important;
+    font-size: 8px;
+    text-decoration: underline !important;
+    text-underline-offset: 3px;
+}
 
-    font-size: 10px;
+.view-all:hover {
+    color: #d0a55c !important;
+}
 
+.view-all span {
+    margin-left: 4px;
     text-decoration: none;
 }
 
-.panel-link:hover {
-    color: #d2aa60;
+.report-list {
+    width: 100%;
 }
 
-
-/* =========================================
-   21. LIST ROW
-   ========================================= */
-
-.list-row {
-    min-height: 65px;
-
+.report-item {
+    min-height: 67px;
     display: flex;
     align-items: center;
-
-    padding: 0 18px;
-
-    border-bottom: 1px solid #242a2f;
-
+    padding: 11px 17px;
+    border-bottom: 1px solid #252c32;
     transition: background 0.2s ease;
 }
 
-.list-row:last-child {
+.report-item:last-child {
     border-bottom: none;
 }
 
-.list-row:hover {
-    background: #151a1e;
+.report-item:hover {
+    background: #13191e;
 }
 
-
-/* =========================================
-   22. LIST AVATAR
-   ========================================= */
-
-.list-avatar {
-    width: 30px;
-    height: 30px;
-
+.collaborator-avatar {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border: 1px solid #35404a;
+    border-radius: 50%;
+    background: #1a2025;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    margin-right: 12px;
-
-    background: #252b30;
-
-    color: #d2aa60;
-
-    border-radius: 50%;
-
+    color: #c59a4c;
     font-family: Georgia, "Times New Roman", serif;
-
     font-size: 12px;
-
-    flex-shrink: 0;
 }
 
-.list-info {
+.report-info {
+    min-width: 0;
     flex: 1;
+    margin-left: 10px;
 }
 
-.list-name {
-    color: #d5d9dc;
-
+.report-name {
+    color: #d8d2c9;
+    font-family: Georgia, "Times New Roman", serif;
     font-size: 12px;
 }
 
-.list-sub {
-    margin-top: 3px;
-
-    color: #606b74;
-
-    font-size: 10px;
+.report-sub {
+    margin-top: 4px;
+    color: #64778b;
+    font-size: 8px;
 }
 
+.empty-note {
+    padding: 26px 22px;
+    color: #718398;
+    font-size: 12px;
+    line-height: 1.7;
+}
 
-/* =========================================
-   23. STATUS
-   ========================================= */
+/* status badges */
 
 .status {
-    padding: 4px 8px;
-
-    border-radius: 12px;
-
+    padding: 4px 10px;
+    border-radius: 4px;
     font-size: 9px;
-
     white-space: nowrap;
-}
-
-.status.pending {
-    color: #c59b57;
-
-    border: 1px solid #56472f;
-}
-
-.status.verified {
-    color: #6d9b85;
-
-    border: 1px solid #31483d;
 }
 
 .status.new {
     color: #c59b57;
-
     border: 1px solid #56472f;
+    background: #241e12;
 }
 
 .status.done {
     color: #6d9b85;
-
     border: 1px solid #31483d;
+    background: #16231e;
 }
 
 
-/* =========================================
-   24. QUICK ACCESS
-   ========================================= */
-
-.quick-access {
-    margin-top: 5px;
-   
-    
-}
+/* =========================================================
+   QUICK ACCESS (3 cards with space between, clickable links)
+   ========================================================= */
 
 .quick-grid {
-      display: flex;
-    justify-content: center; /* Horizontal center */
-    
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+a.quick-card,
+a.quick-card:link,
+a.quick-card:visited,
+a.quick-card:hover,
+a.quick-card:active {
+    text-decoration: none !important;
+    color: inherit;
 }
 
 .quick-card {
-    min-height: 76px;
-
+    min-height: 95px;
+    position: relative;
     display: flex;
-    align-items: center;
-
-    padding: 15px;
-
-    background: #11161a;
-
-    border: 1px solid #292f34;
-
+    align-items: flex-start;
+    padding: 16px;
+    border: 1px solid #293139;
     border-radius: 5px;
-
+    background: #10151a;
     cursor: pointer;
-
-    transition:
-        border-color 0.2s ease,
-        background 0.2s ease,
-        transform 0.2s ease;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .quick-card:hover {
-    background: #151a1e;
-
-    border-color: #3a4147;
-
-    transform: translateY(-2px);
+    background: #13191e;
+    border-color: #3b454e;
 }
 
-.quick-icon {
-    width: 30px;
-    height: 30px;
+.quick-card:focus-visible {
+    outline: 1px solid #c49b4d;
+    outline-offset: 3px;
+}
 
+.quick-card-icon {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border: 1px solid #333c44;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    margin-right: 10px;
-
-    color: #d2aa60;
-
-    border: 1px solid #3a4147;
-
-    border-radius: 50%;
-
-    font-size: 13px;
-
-    flex-shrink: 0;
-}
-
-.quick-info {
-    flex: 1;
-}
-
-.quick-title {
-    color: #d6dade;
-
-    font-size: 12px;
-}
-
-.quick-description {
-    margin-top: 3px;
-
-    color: #606a73;
-
-    font-size: 10px;
-}
-
-.quick-arrow {
-    color: #65707a;
-
+    color: #bd9149;
     font-size: 13px;
 }
 
-
-/* =========================================
-   25. FOOTER
-   ========================================= */
-
-.footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    margin-top: 40px;
-
-    padding: 22px 3px 5px;
-
-    border-top: 1px solid #292f34;
+.quick-card-content {
+    min-width: 0;
+    padding-left: 11px;
+    padding-right: 18px;
 }
 
-.footer-left {
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-}
-
-.footer-chess {
-    color: #d2aa60;
-
-    font-size: 21px;
-}
-
-.footer-title {
-    color: #9a7946;
-
+.quick-card-content h4 {
+    margin: 0;
+    color: #ded8cf;
     font-family: Georgia, "Times New Roman", serif;
-
-    font-size: 12px;
-
-    letter-spacing: 1px;
+    font-size: 14px;
+    font-weight: 400;
 }
 
-.footer-subtitle {
-    margin-top: 4px;
-
-    color: #59636b;
-
-    font-size: 10px;
+.quick-card-content p {
+    margin: 7px 0 0;
+    color: #687b8f;
+    font-size: 9px;
+    line-height: 1.45;
 }
 
-.footer-links {
+.card-arrow {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    color: #66798a;
+    font-size: 14px;
+}
+
+.quick-card:hover .card-arrow {
+    color: #c59b50;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.chess-footer {
+    min-height: 90px;
     display: flex;
-
-    gap: 18px;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 25px;
+    border-top: 1px solid #20262c;
+    color: #617386;
 }
 
-.footer-links span {
-    color: #59636b;
-
-    font-size: 10px;
+.footer-piece {
+    color: #9b773f;
+    font-size: 18px;
 }
 
+.footer-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
 
-/* =========================================
-   26. TOAST
-   ========================================= */
-
-.toast {
-    position: fixed;
-
-    right: 25px;
-    bottom: 25px;
-
-    max-width: 300px;
-
-    padding: 12px 17px;
-
-    background: #181d21;
-
-    color: #d9dde1;
-
-    border: 1px solid #3a4147;
-
-    border-left: 2px solid #d2aa60;
-
-    border-radius: 4px;
-
+.footer-text strong {
+    color: #b0a99f;
+    font-family: Georgia, "Times New Roman", serif;
     font-size: 12px;
-
-    opacity: 0;
-
-    visibility: hidden;
-
-    transform: translateY(10px);
-
-    transition:
-        opacity 0.25s ease,
-        transform 0.25s ease,
-        visibility 0.25s ease;
-
-    z-index: 500;
+    font-weight: 400;
 }
 
-.toast.show {
-    opacity: 1;
-
-    visibility: visible;
-
-    transform: translateY(0);
+.footer-text span {
+    color: #566879;
+    font-size: 8px;
 }
 
 
-/* =========================================
-   27. TABLET
-   ========================================= */
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
 
-@media (max-width: 1050px) {
-
-    .overview-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .quick-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-
-/* =========================================
-   28. SMALLER SCREEN
-   ========================================= */
-
-@media (max-width: 900px) {
-
-    .sidebar {
-        width: 210px;
-    }
-
-    .main {
-        margin-left: 210px;
-    }
-
-    .content {
-        padding: 30px 25px 45px;
-    }
-
-    .topbar {
-        padding: 0 25px;
-    }
-
-    .panel-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-
-/* =========================================
-   29. MOBILE
-   ========================================= */
-
-@media (max-width: 700px) {
-
-    .sidebar {
-        width: 190px;
-
-        transform: translateX(-100%);
-
-        transition: transform 0.25s ease;
-    }
-
-    .main {
-        margin-left: 0;
-    }
-
-    .content {
-        padding: 25px 18px 40px;
-    }
-
-    .topbar {
-        padding: 0 18px;
-    }
-
-    .overview-grid {
-        grid-template-columns: 1fr 1fr;
+@media (max-width: 1100px) {
+    .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .quick-grid {
         grid-template-columns: 1fr;
     }
+}
 
-    .notice {
-        align-items: flex-start;
-
-        flex-direction: column;
-
-        gap: 15px;
-    }
-
-    .welcome-title {
-        font-size: 27px;
-    }
-
-    .welcome-text {
-        font-size: 12px;
+@media (max-width: 1000px) {
+    .welcome-section,
+    .dashboard-section {
+        padding-left: 28px;
+        padding-right: 28px;
     }
 }
 
+@media (max-width: 750px) {
+    .welcome-section {
+        padding: 35px 20px 25px;
+    }
 
-/* =========================================
-   30. VERY SMALL SCREEN
-   ========================================= */
+    .dashboard-section {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
+    .welcome-section h2,
+    .dashboard-section .quick-heading h2 {
+        font-size: 25px !important;
+    }
 
-    .overview-grid {
+    .stat-grid {
         grid-template-columns: 1fr;
     }
-
-    .welcome-title {
-        font-size: 23px;
-    }
-
-    .topbar-title {
-        font-size: 14px;
-    }
-
-    .footer {
-        align-items: flex-start;
-
-        flex-direction: column;
-
-        gap: 15px;
-    }
 }
-
-
-/* =========================================
-   31. FINAL SIDEBAR SAFETY FIX
-   ========================================= */
-
-.sidebar-menu,
-.sidebar-menu ul {
-    margin: 0 !important;
-    padding: 0 !important;
-    list-style: none !important;
-}
-
-.sidebar-menu li {
-    list-style: none !important;
-}
-
-.sidebar-menu li::marker {
-    content: "" !important;
-}
-
-.sidebar-menu a {
-    text-decoration: none !important;
-}
-
-.sidebar-menu a:visited,
-.sidebar-menu a:link {
-    text-decoration: none !important;
-}
-
- /* active sidebar item has a gold outline */
-        .sidebar-menu a.active {
-            background: #1d1a14;
-            border: 1px solid #6b5630;
-            color: #e2e5e8;
-        }
-
-        /* hide the little gold line, the outline replaces it */
-        .sidebar-menu a.active::before {
-            display: none;
-        }
-
-        /* admin account sticks to the bottom of the sidebar */
-        .sidebar-account {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            margin: 0 12px 10px;
-            background: #111519;
-        }
-
-        /* bigger page title in the top bar */
-        .topbar-title {
-            font-size: 22px;
-        }
-
-        /* logout link (was inline style before) */
-        .logout {
-            color: #b08c4d;
-            font-size: 12px;
-            letter-spacing: 1.8px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-
-        .logout:hover {
-            color: #d2aa60;
-        }
-
-        /* status badges: square-ish with a dark tinted background */
-        .status {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-        }
-
-        .status.verified,
-        .status.done {
-            background: #16231e;
-        }
-
-        .status.pending,
-        .status.new {
-            background: #241e12;
-        }
-
-        .notification {
-            font-size: 30px;
-        }
-
-        

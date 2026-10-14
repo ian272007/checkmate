@@ -60,182 +60,22 @@ $pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE st
 
     <title>CHECKMATE - Collaborations</title>
 
-     <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= time() ?>">
-<link rel="stylesheet" href="../../asset/css/collaboration.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/collaboration.css?v=<?= filemtime(__DIR__ . '/../../asset/css/collaboration.css') ?>">
 </head>
 
 <body>
 
-    <!-- =========================================
-         SIDEBAR
-         ========================================= -->
+<?php
+// shared sidebar + top bar (partials/admin_shell.php)
+$activePage      = "collaborations";
+$pageTitle       = "Collaborations";
+$pageSub         = "Monitor collaboration requests and active student partnerships.";
+$sidebarStudents = $studentCount;
+$sidebarPending  = $pendingReports;
 
-    <aside class="sidebar">
-
-        <div class="logo">
-            <span>♞</span>
-            CHECKMATE
-        </div>
-
-        <div class="admin-label">
-            ADMINISTRATION
-        </div>
-
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                OVERVIEW
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="admin_home.php" data-page="dashboard">
-                        <span class="menu-icon">⌂</span>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="student.php" data-page="students">
-                        <span class="menu-icon">♟</span>
-                        <span>Students</span>
-                        <span class="menu-count"><?= $studentCount ?></span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_ad.php" data-page="questions">
-                        <span class="menu-icon">?</span>
-                        <span>Questions</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="collaboration.php" class="active" data-page="collaborations">
-                        <span class="menu-icon">♞</span>
-                        <span>Collaborations</span>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                MANAGEMENT
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="subject_course.php" data-page="subjects">
-                        <span class="menu-icon">◇</span>
-                        <span>Subjects & Courses</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_type.php" data-page="types">
-                        <span class="menu-icon">≡</span>
-                        <span>Question Types</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="report.php" data-page="reports">
-                        <span class="menu-icon">▤</span>
-                        <span>Reports</span>
-                        <?php if ($pendingReports > 0): ?>
-                            <span class="menu-dot"></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-        <div class="sidebar-account">
-
-            <div class="sidebar-account-user">
-
-                <div class="sidebar-account-avatar">
-                    A
-                </div>
-
-                <div class="sidebar-account-info">
-                    <strong>Administrator</strong>
-                    <span>CHECKMATE Admin</span>
-                </div>
-
-                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-
-            </div>
-
-            <div class="account-menu" id="accountMenu">
-                <a href="change_password.html">
-                    <span class="account-menu-icon">⚿</span>
-                    <span>Change Password</span>
-                </a>
-                <a href="../../authentication/Login/logout.php" class="menu-logout">
-                    <span class="account-menu-icon">⏻</span>
-                    <span>Log Out</span>
-                </a>
-            </div>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =========================================
-         MAIN CONTENT
-         ========================================= -->
-
-    <main class="main">
-
-        <header class="topbar">
-
-            <div class="topbar-left">
-
-                <div class="topbar-label">
-                    ADMINISTRATION
-                </div>
-
-                <div class="topbar-title">
-                    Collaborations
-                </div>
-
-                <div class="topbar-sub">
-                    Monitor collaboration requests and active student partnerships.
-                </div>
-
-            </div>
-
-            <div class="topbar-right">
-
-                <button class="notification" id="notificationButton">
-
-                    ♧
-
-                    <?php if ($pendingReports > 0): ?>
-                        <span class="notification-count"><?= $pendingReports ?></span>
-                    <?php endif; ?>
-
-                </button>
-
-            </div>
-
-        </header>
-
+require __DIR__ . "/partials/admin_shell.php";
+?>
 
         <section class="content">
 

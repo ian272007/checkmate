@@ -69,7 +69,7 @@ foreach ($students as $s) {
 
 sort($courses);
 
-// pending reports number for the bell (same as the dashboard)
+// pending reports number for the bell and the Reports dot
 $pending_reports = 0;
 $check = $conn->query("SHOW TABLES LIKE 'reports'");
 
@@ -91,195 +91,27 @@ $conn->close();
 
     <!-- filemtime() is the time the file was last saved, so the link changes whenever you edit the file
          (this stops the browser from showing an old cached copy) -->
-    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
     <link rel="stylesheet" href="../../asset/css/student.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student.css') ?>">
 </head>
 
 <body>
 
-    <!-- =========================================
-         SIDEBAR
-         ========================================= -->
+<?php
+// shared sidebar + top bar (partials/admin_shell.php)
+$activePage      = "students";
+$pageTitle       = "Students";
+$pageSub         = "";
+$sidebarStudents = $total_students;
+$sidebarPending  = $pending_reports;
 
-    <aside class="sidebar">
-
-        <!-- Logo -->
-        <div class="logo">
-            <span>♞</span>
-            CHECKMATE
-        </div>
-
-        <!-- Account Type -->
-        <div class="admin-label">
-            ADMINISTRATION
-        </div>
-
-
-        <!-- OVERVIEW MENU -->
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                OVERVIEW
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="admin_home.php" data-page="dashboard">
-                        <span class="menu-icon">⌂</span>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="student.php" data-page="students">
-                        <span class="menu-icon">♟</span>
-                        <span>Students</span>
-                        <!-- real number of students now -->
-                        <span class="menu-count"><?= $total_students ?></span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_ad.php" data-page="questions">
-                        <span class="menu-icon">?</span>
-                        <span>Questions</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="collaboration.php" data-page="collaborations">
-                        <span class="menu-icon">♞</span>
-                        <span>Collaborations</span>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-
-        <!-- MANAGEMENT MENU -->
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                MANAGEMENT
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="subject_course.php" data-page="subjects">
-                        <span class="menu-icon">◇</span>
-                        <span>Subjects & Courses</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_type.php" data-page="types">
-                        <span class="menu-icon">≡</span>
-                        <span>Question Types</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="report.php" data-page="reports">
-                        <span class="menu-icon">▤</span>
-                        <span>Reports</span>
-                        <span class="menu-dot"></span>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-        <div class="sidebar-account">
-
-            <div class="sidebar-account-user">
-
-                <div class="sidebar-account-avatar">
-                    A
-                </div>
-
-                <div class="sidebar-account-info">
-                    <strong>Administrator</strong>
-                    <span>CHECKMATE Admin</span>
-                </div>
-
-                <!-- three dots (vertical) on the right side of the profile -->
-                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-
-            </div>
-
-            <!-- menu that opens when the 3 dots are clicked -->
-            <div class="account-menu" id="accountMenu">
-                <a href="change_password.html">
-                    <span class="account-menu-icon">⚿</span>
-                    <span>Change Password</span>
-                </a>
-                <a href="../../authentication/Login/logout.php" class="menu-logout">
-                    <span class="account-menu-icon">⏻</span>
-                    <span>Log Out</span>
-                </a>
-            </div>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =========================================
-         MAIN CONTENT
-         ========================================= -->
-
-    <main class="main">
-
-        <!-- TOP BAR -->
-        <header class="topbar">
-
-            <div class="topbar-left">
-
-                <div class="topbar-label">
-                    ADMINISTRATION
-                </div>
-
-                <div class="topbar-title">
-                    Students
-                </div>
-
-            </div>
-
-            <div class="topbar-right">
-
-                <!-- Notifications (the number is the pending reports) -->
-                <button class="notification" id="notificationButton">
-
-                    ♧
-
-                    <?php if ($pending_reports > 0): ?>
-                        <span class="notification-count">
-                            <?= $pending_reports ?>
-                        </span>
-                    <?php endif; ?>
-
-                </button>
-
-            </div>
-
-        </header>
-
+require __DIR__ . "/partials/admin_shell.php";
+?>
 
         <!-- PAGE CONTENT -->
         <section class="content">
 
-            <!-- Search and filters (the Add Student button was deleted) -->
+            <!-- Search and filters -->
             <div class="toolbar">
 
                 <div class="search-box">
@@ -307,7 +139,7 @@ $conn->close();
             </div>
 
 
-            <!-- Students table (the Status column was deleted) -->
+            <!-- Students table -->
             <div class="table-wrap">
 
                 <table class="students-table">
@@ -320,7 +152,6 @@ $conn->close();
                             <th>Email</th>
                             <th>Course</th>
                             <th>Year Level</th>
-                            
                         </tr>
                     </thead>
 
@@ -330,7 +161,7 @@ $conn->close();
 
                             <!-- no student accounts in the database yet -->
                             <tr class="empty-row">
-                                <td colspan="7">No students have registered yet.</td>
+                                <td colspan="6">No students have registered yet.</td>
                             </tr>
 
                         <?php else: ?>
@@ -356,7 +187,6 @@ $conn->close();
                                     <td class="cell-muted"><?= e($s["email"]) ?></td>
                                     <td><?= e($s["course"]) ?></td>
                                     <td><?= e($s["year_level"]) ?></td>
-                                  
 
                                 </tr>
 
@@ -364,7 +194,7 @@ $conn->close();
 
                             <!-- shown by the JavaScript when the search/filters match nobody -->
                             <tr class="empty-row" id="noMatchRow" style="display: none;">
-                                <td colspan="7">No students found. Try a different search or filter.</td>
+                                <td colspan="6">No students found. Try a different search or filter.</td>
                             </tr>
 
                         <?php endif; ?>

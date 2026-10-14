@@ -1,0 +1,531 @@
+/* =========================================================
+   CHECKMATE — ADMIN LAYOUT (shared by ALL admin pages)
+   Sidebar, top bar, bell, account menu and toast.
+   Same design as the student pages.
+
+   Load this BEFORE the page's own CSS file.
+   ========================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+/* Always keep the page scrollbar (even on short pages).
+   Without this, the page gets wider by about 17px whenever a filter makes it
+   short enough to lose its scrollbar, so the cards and tables "stretch". */
+html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
+body {
+    background: #0b0e11;
+    color: #d8d2c8;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 253px;
+    height: 100vh;
+    background: #101419;
+    border-right: 1px solid #272d33;
+    display: flex;
+    flex-direction: column;
+    padding: 29px 17px 15px;
+    overflow-y: auto;
+    line-height: 1.5;
+    z-index: 1000;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #272d33;
+    border-radius: 10px;
+}
+
+/* LOGO */
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    margin-bottom: 31px;
+}
+
+.logo-piece {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border: 1px solid #394149;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c49b4d;
+    font-size: 20px;
+    margin-right: 11px;
+}
+
+.logo-text {
+    min-width: 0;
+}
+
+.logo-text h1 {
+    margin: 0;
+    color: #e7e0d5;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 2px;
+
+    /* fixed on purpose: Bootstrap (loaded only on the dashboard) sets h1 to 1.2,
+       which made the dashboard sidebar sit about 5px higher than the other pages */
+    line-height: 1.5;
+}
+
+.logo-text span {
+    display: block;
+    margin-top: 7px;
+    color: #6f8193;
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+}
+
+/* SECTIONS */
+
+.sidebar-section {
+    width: 100%;
+    margin-bottom: 26px;
+}
+
+.section-title {
+    padding-left: 11px;
+    margin-bottom: 10px;
+    color: #6d7d8e;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
+}
+
+/* MENU ITEMS */
+
+.menu-item {
+    position: relative;
+    width: 100%;
+    height: 43px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 17px;
+    border-radius: 5px;
+    color: #8191a2 !important;
+    text-decoration: none !important;
+    font-size: 13px;
+    margin-bottom: 2px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.menu-item:hover {
+    background: #171c21;
+    color: #d5d0c8 !important;
+}
+
+.menu-item.active {
+    background: #1a1f24;
+    color: #e6e0d6 !important;
+}
+
+.menu-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #c69a4b;
+    border-radius: 2px 0 0 2px;
+}
+
+.menu-icon {
+    width: 24px;
+    flex-shrink: 0;
+    margin-right: 9px;
+    color: #7d8d9e;
+    font-size: 15px;
+    text-align: center;
+}
+
+.menu-item.active .menu-icon {
+    color: #c69a4b;
+}
+
+/* number next to "Students" and the gold dot next to "Reports" */
+
+.menu-count {
+    margin-left: auto;
+    color: #d2aa60;
+    font-size: 11px;
+}
+
+.menu-dot {
+    width: 5px;
+    height: 5px;
+    margin-left: auto;
+    margin-right: 6px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #d2aa60;
+}
+
+/* ADMIN PROFILE (bottom of sidebar) */
+
+.sidebar-user {
+    position: relative;
+    margin-top: auto;
+    min-height: 62px;
+    padding: 13px 8px 0;
+    border-top: 1px solid #272d33;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+}
+
+.user-avatar {
+    width: 37px;
+    height: 37px;
+    flex: 0 0 37px;
+    border: 1px solid #38414a;
+    border-radius: 50%;
+    background: #191e23;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c79b4c;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 14px;
+}
+
+.user-information {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 9px;
+    overflow: hidden;
+}
+
+.user-information strong {
+    display: block;
+    width: 100%;
+    color: #e2ddd5;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-information span {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    color: #68798a;
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-more {
+    flex: 0 0 20px;
+    width: 20px;
+    min-width: 20px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #bd9148;
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.user-more:hover,
+.user-more.open {
+    color: #d0a55c;
+}
+
+.user-more:focus {
+    outline: none;
+}
+
+/* pop-up menu of the three dots (opens above the profile) */
+
+.cm-user-menu {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    bottom: calc(100% + 8px);
+    display: none;
+    padding: 6px;
+    border: 1px solid #71582d;
+    border-radius: 6px;
+    background: #181816;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+    z-index: 2000;
+}
+
+.cm-user-menu.show {
+    display: block;
+}
+
+.cm-user-menu a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    color: #e7e0d5;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.cm-user-menu a:hover,
+.cm-user-menu a:focus {
+    background: #292217;
+    color: #d4a657;
+    outline: none;
+}
+
+.cm-menu-icon {
+    width: 14px;
+    text-align: center;
+    color: #d4a657;
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   MAIN + TOP BAR
+   ========================================================= */
+
+.main-content {
+    min-height: 100vh;
+    margin-left: 253px;
+    background: #0b0e11;
+    overflow-x: hidden;
+}
+
+/* --scrollbar-w is set by admin_shell.js (width of the page scrollbar, 0 if none).
+   Taking it away from the right padding keeps the bell in the SAME place on every
+   page, whether the page is long enough to have a scrollbar or not. */
+.ad-topbar {
+    min-height: 66px;
+    padding: 10px max(8px, calc(39px - var(--scrollbar-w, 0px))) 10px 39px;
+    border-bottom: 1px solid #242a30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1.5;
+}
+
+.ad-topbar-left {
+    min-width: 0;
+}
+
+.ad-crumbs {
+    display: flex;
+    align-items: center;
+}
+
+.ad-crumb-label {
+    color: #718296;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
+}
+
+.ad-crumb-divider {
+    margin: 0 12px;
+    color: #4b545d;
+    font-size: 13px;
+}
+
+.ad-crumb-current {
+    color: #c49a4d;
+    font-size: 11px;
+}
+
+/* small line under the breadcrumb (page description) */
+.ad-topbar-sub {
+    margin-top: 4px;
+    color: #66798d;
+    font-size: 10px;
+}
+
+.ad-topbar-right {
+    display: flex;
+    align-items: center;
+}
+
+
+/* =========================================================
+   BELL (notifications = pending reports)
+   ========================================================= */
+
+.ad-topbar .notification {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #7f8f9c;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ad-topbar .notification:hover {
+    color: #d0a55c;
+}
+
+.ad-topbar .notification-count {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #0b0e11;
+    border-radius: 50%;
+    background: #d2aa60;
+    color: #111519;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+
+/* =========================================================
+   PAGE CONTENT (used by the inner admin pages)
+   ========================================================= */
+
+.content {
+    width: 100%;
+    padding: 34px 40px 50px;
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.toast {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    max-width: 320px;
+    padding: 13px 17px;
+    border: 1px solid #39444d;
+    border-left: 2px solid #c49b4d;
+    border-radius: 5px;
+    background: #171d22;
+    color: #d8d1c8;
+    font-size: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+    z-index: 9999;
+}
+
+.toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1000px) {
+    .sidebar {
+        width: 220px;
+    }
+
+    .main-content {
+        margin-left: 220px;
+    }
+
+    .ad-topbar {
+        padding: 10px max(8px, calc(25px - var(--scrollbar-w, 0px))) 10px 25px;
+    }
+
+    .content {
+        padding: 28px 25px 45px;
+    }
+}
+
+@media (max-width: 750px) {
+    .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid #272d33;
+        padding: 18px;
+    }
+
+    .logo-area {
+        margin-bottom: 18px;
+    }
+
+    .sidebar-user {
+        margin-top: 15px;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .ad-topbar {
+        padding: 10px max(8px, calc(18px - var(--scrollbar-w, 0px))) 10px 18px;
+    }
+
+    .content {
+        padding: 25px 18px 40px;
+    }
+}

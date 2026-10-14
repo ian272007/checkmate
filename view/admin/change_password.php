@@ -1,3 +1,32 @@
+<?php
+session_start();
+
+// only admins can open this page (this check was missing before)
+if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
+    header("Location: ../../authentication/Login/login.php");
+    exit;
+}
+
+// connect to the database (gives us the $conn variable)
+require_once "../../config/config.php";
+
+// numbers for the sidebar (before they were a fixed 8 and 3)
+$studentCount = 0;
+$pendingReports = 0;
+
+$result = $conn->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
+if ($result) {
+    $studentCount = (int) $result->fetch_row()[0];
+}
+
+$check = $conn->query("SHOW TABLES LIKE 'reports'");
+if ($check && $check->num_rows > 0) {
+    $result = $conn->query("SELECT COUNT(*) FROM reports WHERE status = 'Pending'");
+    if ($result) {
+        $pendingReports = (int) $result->fetch_row()[0];
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,207 +34,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>CHECKMATE - Change Password</title>
-    <link rel="stylesheet" href="../../asset/css/admin_home.css">
-    <link rel="stylesheet" href="../../asset/css/change_password.css">
 
-
+    <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/change_password.css?v=<?= filemtime(__DIR__ . '/../../asset/css/change_password.css') ?>">
 </head>
 
 <body>
 
-   
-    <aside class="sidebar">
+<?php
+// shared sidebar + top bar (partials/admin_shell.php)
+// no item is highlighted because Change Password is not in the menu
+$activePage      = "";
+$pageTitle       = "Change Password";
+$pageSub         = "Update the password you use to sign in to CHECKMATE.";
+$sidebarStudents = $studentCount;
+$sidebarPending  = $pendingReports;
 
-        <!-- Logo -->
-        <div class="logo">
-            <span>♞</span>
-            CHECKMATE
-        </div>
-
-        <!-- Account Type -->
-        <div class="admin-label">
-            ADMINISTRATION
-        </div>
-
-
-        <!-- OVERVIEW MENU -->
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                OVERVIEW
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="admin_home.php" data-page="dashboard">
-                        <span class="menu-icon">⌂</span>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="student.php" data-page="students">
-                        <span class="menu-icon">♟</span>
-                        <span>Students</span>
-                        <span class="menu-count">8</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_ad.php" data-page="questions">
-                        <span class="menu-icon">?</span>
-                        <span>Questions</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="collaboration.php" data-page="collaborations">
-                        <span class="menu-icon">♞</span>
-                        <span>Collaborations</span>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-
-        <!-- MANAGEMENT MENU -->
-        <div class="sidebar-section">
-
-            <div class="sidebar-title">
-                MANAGEMENT
-            </div>
-
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="subject_course.php" data-page="subjects">
-                        <span class="menu-icon">◇</span>
-                        <span>Subjects & Courses</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_type.php" data-page="types">
-                        <span class="menu-icon">≡</span>
-                        <span>Question Types</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="report.php" data-page="reports">
-                        <span class="menu-icon">▤</span>
-                        <span>Reports</span>
-                        <span class="menu-dot"></span>
-                    </a>
-                </li>
-
-            </ul>
-
-        </div>
-
-
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-        <!-- ADMIN ACCOUNT (bottom of sidebar) -->
-<div class="sidebar-account">
-
-    <div class="sidebar-account-user">
-
-        <div class="sidebar-account-avatar">
-            A
-        </div>
-
-        <div class="sidebar-account-info">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
-        </div>
-
-        <!-- three dots (vertical) on the right side of the profile -->
-        <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-    </div>
-
-    <!-- menu that opens when the 3 dots are clicked -->
-    <div class="account-menu" id="accountMenu">
-        <a href="change_password.html">
-            <span class="account-menu-icon">⚿</span>
-            <span>Change Password</span>
-        </a>
-        <a href="../../authentication/Login/logout.php" class="menu-logout">
-            <span class="account-menu-icon">⏻</span>
-            <span>Log Out</span>
-        </a>
-    </div>
-
-</div>
-
-            <!-- menu that opens when the 3 dots are clicked -->
-            <div class="account-menu" id="accountMenu">
-                <a href="change_password.html">
-                    <span class="account-menu-icon">⚿</span>
-                    <span>Change Password</span>
-                </a>
-                <a href="../../authentication/Login/logout.php" class="menu-logout">
-                    <span class="account-menu-icon">⏻</span>
-                    <span>Log Out</span>
-                </a>
-            </div>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =========================================
-         MAIN CONTENT
-         ========================================= -->
-
-    <main class="main">
-
-        <!-- TOP BAR -->
-        <header class="topbar">
-
-            <div class="topbar-left">
-
-                <div class="topbar-label">
-                    ADMINISTRATION
-                </div>
-
-                <div class="topbar-title">
-                    Change Password
-                </div>
-
-                <div class="topbar-sub">
-                    Update the password you use to sign in to CHECKMATE.
-                </div>
-
-            </div>
-
-            <div class="topbar-right">
-
-                <!-- Notifications -->
-                <button class="notification" id="notificationButton">
-
-                    ♧
-
-                    <span class="notification-count">
-                        3
-                    </span>
-
-                </button>
-
-              
-
-            </div>
-
-        </header>
-
+require __DIR__ . "/partials/admin_shell.php";
+?>
 
         <!-- PAGE CONTENT -->
         <section class="content">
@@ -247,7 +93,7 @@
                         <div class="form-error" id="formError"></div>
 
                         <div class="form-buttons">
-                            <a href="admin_home.html" class="btn-outline">Cancel</a>
+                            <a href="admin_home.php" class="btn-outline">Cancel</a>
                             <button class="btn-gold" id="saveButton">Update Password</button>
                         </div>
 
@@ -282,7 +128,8 @@
 
     <div class="toast" id="toast"></div>
 
-    <script scr="../../asset/js/change_password.js"></script>
-  
+    <!-- was "scr=" before, so this file never loaded -->
+    <script src="../../asset/js/change_password.js"></script>
+
 </body>
-</html>
+</html>  

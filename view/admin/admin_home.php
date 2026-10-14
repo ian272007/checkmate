@@ -72,7 +72,6 @@ $total_collabs = getCount($conn, "SELECT COUNT(*) FROM collaborations");
 
 // 4 and 5. reports
 // first check if the reports table exists, so the page does not crash
-// TODO: remove this check once the reports table is created for sure
 $reports_table_ready = false;
 $check = $conn->query("SHOW TABLES LIKE 'reports'");
 
@@ -109,605 +108,273 @@ $conn->close();
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>CHECKMATE - Admin Dashboard</title>
 
-    <<!-- filemtime() is the time the file was last saved, so the link changes whenever you edit the CSS -->
-<link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
-<link rel="stylesheet" href="../../asset/css/student.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student.css') ?>">
+    <!-- Bootstrap 5.3.3 (same as the student pages, so both look the same) -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- shared sidebar + top bar, then this page's own CSS
+         (filemtime() changes the link whenever you edit a file, so the browser never shows an old copy) -->
+    <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/admin_home.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_home.css') ?>">
 
 </head>
 
 <body>
 
-    <!-- =========================================
-         SIDEBAR
-         ========================================= -->
+<?php
+// shared sidebar + top bar (partials/admin_shell.php)
+$activePage      = "dashboard";
+$pageTitle       = "Dashboard";
+$pageSub         = "";
+$sidebarStudents = $total_students;
+$sidebarPending  = $pending_reports;
+$showBell        = false;
 
-    <aside class="sidebar">
+require __DIR__ . "/partials/admin_shell.php";
+?>
 
-        <!-- Logo -->
-        <div class="logo">
-            <span>♞</span>
-            CHECKMATE
+    <!-- WELCOME -->
+    <section class="welcome-section">
+
+        <div class="welcome-small">
+            ♜ SYSTEM OVERVIEW
         </div>
 
-        <!-- Account Type -->
-        <div class="admin-label">
-            ADMINISTRATION
-        </div>
+        <h2>
+            Welcome back, Administrator.
+        </h2>
 
+        <p>
+            Manage students, questions, collaborations, and system records.
+        </p>
 
-        <!-- =====================================
-             OVERVIEW MENU
-             ===================================== -->
+    </section>
 
-        <div class="sidebar-section">
+    <section class="dashboard-section">
 
-            <div class="sidebar-title">
-                OVERVIEW
+        <!-- SYSTEM OVERVIEW -->
+        <div class="quick-heading">
+
+            <div class="heading-label">
+                SYSTEM
             </div>
 
-           <ul class="sidebar-menu">
+            <h2>
+                Overview
+            </h2>
 
-                <li>
-                    <a href="admin_home.php" data-page="dashboard">
-                        <span class="menu-icon">⌂</span>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
+        </div>
 
-                <li>
-                    <a href="student.php" data-page="students">
-                        <span class="menu-icon">♟</span>
-                        <span>Students</span>
-                        <!-- was a fixed 8, now it shows the real number -->
-                        <span class="menu-count"><?= $total_students ?></span>
-                    </a>
-                </li>
+        <div class="stat-grid">
 
-                <li>
-                    <a href="question_ad.php" data-page="questions">
-                        <span class="menu-icon">?</span>
-                        <span>Questions</span>
-                    </a>
-                </li>
+            <div class="stat-card">
+                <div class="stat-label">Registered Students</div>
+                <div class="stat-number"><?= $total_students ?></div>
+                <div class="stat-description">Total student accounts</div>
+            </div>
 
-                <li>
-                    <a href="collaboration.php" data-page="collaborations">
-                        <span class="menu-icon">♞</span>
-                        <span>Collaborations</span>
-                    </a>
-                </li>
+            <div class="stat-card">
+                <div class="stat-label">Open Questions</div>
+                <div class="stat-number"><?= $open_questions ?></div>
+                <div class="stat-description">Questions waiting for answers</div>
+            </div>
 
-            </ul>
+            <div class="stat-card">
+                <div class="stat-label">Collaborations</div>
+                <div class="stat-number"><?= $total_collabs ?></div>
+                <div class="stat-description">Active collaboration requests</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Pending Reports</div>
+                <div class="stat-number"><?= $pending_reports ?></div>
+                <div class="stat-description">Reports requiring review</div>
+            </div>
 
         </div>
 
 
-        <!-- =====================================
-             MANAGEMENT MENU
-             ===================================== -->
+        <!-- RECENT REPORTS (same width as the overview cards) -->
+        <div class="dashboard-panel">
 
-        <div class="sidebar-section">
+            <div class="panel-header">
 
-            <div class="sidebar-title">
+                <div>
+
+                    <div class="panel-label">
+                        REPORTS
+                    </div>
+
+                    <h3>
+                        Recent reports
+                    </h3>
+
+                </div>
+
+                <a href="report.php" class="view-all">
+                    View all
+                    <span>→</span>
+                </a>
+
+            </div>
+
+            <div class="report-list">
+
+                <?php if (!$reports_table_ready): ?>
+
+                    <div class="empty-note">
+                        The reports table does not exist yet. Import reports.sql in phpMyAdmin.
+                    </div>
+
+                <?php elseif (count($recent_reports) == 0): ?>
+
+                    <div class="empty-note">
+                        No reports yet.
+                    </div>
+
+                <?php else: ?>
+
+                    <?php foreach ($recent_reports as $report): ?>
+
+                        <?php
+                        // Pending reports get a "!" and the others get a check mark
+                        if ($report["status"] == "Pending") {
+                            $icon = "!";
+                            $status_class = "new";
+                        } else {
+                            $icon = "✓";
+                            $status_class = "done";
+                        }
+                        ?>
+
+                        <div class="report-item">
+
+                            <div class="collaborator-avatar">
+                                <?= $icon ?>
+                            </div>
+
+                            <div class="report-info">
+
+                                <div class="report-name">
+                                    <?= e($report["reason"]) ?>
+                                </div>
+
+                                <div class="report-sub">
+                                    Report #<?= str_pad($report["report_id"], 4, "0", STR_PAD_LEFT) ?>
+                                    · <?= e(timeAgo($report["create_at"])) ?>
+                                </div>
+
+                            </div>
+
+                            <span class="status <?= $status_class ?>">
+                                <?= e($report["status"]) ?>
+                            </span>
+
+                        </div>
+
+                    <?php endforeach; ?>
+
+                <?php endif; ?>
+
+            </div>
+
+        </div>
+
+
+        <!-- QUICK ACCESS -->
+        <div class="quick-heading quick-heading-spaced">
+
+            <div class="heading-label">
                 MANAGEMENT
             </div>
 
-            <ul class="sidebar-menu">
-
-                <li>
-                    <a href="subject_course.php" data-page="subjects">
-                        <span class="menu-icon">◇</span>
-                        <span>Subjects & Courses</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="question_type.php" data-page="types">
-                        <span class="menu-icon">≡</span>
-                        <span>Question Types</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="report.php" data-page="reports">
-                        <span class="menu-icon">▤</span>
-                        <span>Reports</span>
-                        <span class="menu-dot"></span>
-                    </a>
-                </li>
-
-            </ul>
+            <h2>
+                Quick access
+            </h2>
 
         </div>
 
+        <div class="quick-grid">
 
-        <!-- =====================================
-             ADMIN ACCOUNT (bottom of sidebar)
-             ===================================== -->
+            <a href="subject_course.php" class="quick-card">
 
-        <div class="sidebar-account">
+                <div class="quick-card-icon">◇</div>
 
-            <div class="sidebar-account-user">
-
-                <div class="sidebar-account-avatar">
-                    A
+                <div class="quick-card-content">
+                    <h4>Subjects &amp; Courses</h4>
+                    <p>Manage academic records</p>
                 </div>
 
-                <div class="sidebar-account-info">
-                    <strong>Administrator</strong>
-                    <span>CHECKMATE Admin</span>
+                <div class="card-arrow">→</div>
+
+            </a>
+
+            <a href="question_type.php" class="quick-card">
+
+                <div class="quick-card-icon">≡</div>
+
+                <div class="quick-card-content">
+                    <h4>Question Types</h4>
+                    <p>Manage question categories</p>
                 </div>
 
-                <!-- three dots (vertical) on the right side of the profile -->
-                <button class="account-menu-btn" id="accountMenuButton" title="Account options" aria-label="Account options">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <div class="card-arrow">→</div>
 
-            </div>
+            </a>
 
-            <!-- menu that opens when the 3 dots are clicked -->
-            <div class="account-menu" id="accountMenu">
-                <a href="change_password.html">
-                    <span class="account-menu-icon">⚿</span>
-                    <span>Change Password</span>
-                </a>
-                <a href="../../authentication/Login/logout.php" class="menu-logout">
-                    <span class="account-menu-icon">⏻</span>
-                    <span>Log Out</span>
-                </a>
-            </div>
+            <a href="report.php" class="quick-card">
+
+                <div class="quick-card-icon">▤</div>
+
+                <div class="quick-card-content">
+                    <h4>Reports</h4>
+                    <p>Review reported content</p>
+                </div>
+
+                <div class="card-arrow">→</div>
+
+            </a>
 
         </div>
 
-    </aside>
+    </section>
 
+    <!-- FOOTER -->
+    <footer class="chess-footer">
 
-    <!-- =========================================
-         MAIN CONTENT
-         ========================================= -->
+        <div class="footer-piece">
+            ♛
+        </div>
 
-    <main class="main">
+        <div class="footer-text">
 
+            <strong>
+                Keep the board organized.
+            </strong>
 
-        <!-- =====================================
-             TOP BAR
-             ===================================== -->
+            <span>
+                Verify. Manage. Monitor.
+            </span>
 
-        <header class="topbar">
+        </div>
 
-            <div class="topbar-left">
+        <div class="footer-piece">
+            ♛
+        </div>
 
-                <div class="topbar-label">
-                    ADMINISTRATION
-                </div>
+    </footer>
 
-                <div class="topbar-title">
-                    Dashboard
-                </div>
-
-            </div>
-
-
-            <div class="topbar-right">
-
-                <!-- Notifications (the number is the pending reports) -->
-                <button class="notification" id="notificationButton">
-
-                    ♧
-
-                    <?php if ($pending_reports > 0): ?>
-                        <span class="notification-count">
-                            <?= $pending_reports ?>
-                        </span>
-                    <?php endif; ?>
-
-                </button>
-
-            </div>
-
-        </header>
-
-
-
-        <!-- =====================================
-             PAGE CONTENT
-             ===================================== -->
-
-        <section class="content">
-
-
-            <!-- =================================
-                 WELCOME
-                 ================================= -->
-
-            <div class="welcome">
-
-                <div class="welcome-label">
-                    ♜ SYSTEM OVERVIEW
-                </div>
-
-                <h1 class="welcome-title">
-                    Welcome back, Administrator.
-                </h1>
-
-                <p class="welcome-text">
-                    Manage students, questions, collaborations, and system records.
-                </p>
-
-            </div>
-
-
-
-            <!-- =================================
-                 SYSTEM OVERVIEW
-                 ================================= -->
-
-            <div class="section-heading">
-
-                <div class="section-label">
-                    SYSTEM
-                </div>
-
-                <h2 class="section-title">
-                    Overview
-                </h2>
-
-            </div>
-
-
-            <div class="overview-grid">
-
-
-                <!-- Registered Students -->
-                <div class="overview-card">
-
-                    <div class="overview-card-label">
-                        Registered Students
-                    </div>
-
-                    <div class="overview-card-number">
-                        <?= $total_students ?>
-                    </div>
-
-                    <div class="overview-card-description">
-                        Total student accounts
-                    </div>
-
-                </div>
-
-
-                <!-- Open Questions -->
-                <div class="overview-card">
-
-                    <div class="overview-card-label">
-                        Open Questions
-                    </div>
-
-                    <div class="overview-card-number">
-                        <?= $open_questions ?>
-                    </div>
-
-                    <div class="overview-card-description">
-                        Questions waiting for answers
-                    </div>
-
-                </div>
-
-
-                <!-- Collaborations -->
-                <div class="overview-card">
-
-                    <div class="overview-card-label">
-                        Collaborations
-                    </div>
-
-                    <div class="overview-card-number">
-                        <?= $total_collabs ?>
-                    </div>
-
-                    <div class="overview-card-description">
-                        Active collaboration requests
-                    </div>
-
-                </div>
-
-
-                <!-- Reports -->
-                <div class="overview-card">
-
-                    <div class="overview-card-label">
-                        Pending Reports
-                    </div>
-
-                    <div class="overview-card-number">
-                        <?= $pending_reports ?>
-                    </div>
-
-                    <div class="overview-card-description">
-                        Reports requiring review
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================
-                 RECENT REPORTS
-                 (panel-grid centers the panel)
-                 ================================= -->
-
-            <div class="panel-grid">
-
-                <div class="panel">
-
-                    <div class="panel-header">
-
-                        <div>
-
-                            <div class="panel-label">
-                                REPORTS
-                            </div>
-
-                            <h2 class="panel-heading">
-                                Recent reports
-                            </h2>
-
-                        </div>
-
-                        <a href="#" class="panel-link" id="viewReports">
-                            View all →
-                        </a>
-
-                    </div>
-
-
-                    <?php if (!$reports_table_ready): ?>
-
-                        <!-- the reports table is not in the database yet -->
-                        <div class="list-row">
-                            <div class="list-info">
-                                <div class="list-sub">
-                                    The reports table does not exist yet. Import reports.sql in phpMyAdmin.
-                                </div>
-                            </div>
-                        </div>
-
-                    <?php elseif (count($recent_reports) == 0): ?>
-
-                        <!-- table exists but nobody reported anything -->
-                        <div class="list-row">
-                            <div class="list-info">
-                                <div class="list-sub">
-                                    No reports yet.
-                                </div>
-                            </div>
-                        </div>
-
-                    <?php else: ?>
-
-                        <?php foreach ($recent_reports as $report): ?>
-
-                            <?php
-                            // Pending reports get a "!" and the Resolved ones get a check mark
-                            if ($report["status"] == "Pending") {
-                                $icon = "!";
-                                $status_class = "new";
-                            } else {
-                                $icon = "✓";
-                                $status_class = "done";
-                            }
-                            ?>
-
-                            <div class="list-row">
-
-                                <div class="list-avatar">
-                                    <?= $icon ?>
-                                </div>
-
-                                <div class="list-info">
-
-                                    <div class="list-name">
-                                        <?= e($report["reason"]) ?>
-                                    </div>
-
-                                    <div class="list-sub">
-                                        Report #<?= str_pad($report["report_id"], 4, "0", STR_PAD_LEFT) ?>
-                                        · <?= e(timeAgo($report["create_at"])) ?>
-                                    </div>
-
-                                </div>
-
-                                <span class="status <?= $status_class ?>">
-                                    <?= e($report["status"]) ?>
-                                </span>
-
-                            </div>
-
-                        <?php endforeach; ?>
-
-                    <?php endif; ?>
-
-
-                    
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================
-                 QUICK ACCESS
-                 ================================= -->
-         
-
-            <div class="quick-access">
-
-                <div class="section-heading">
-
-                    <div class="section-label">
-                        MANAGEMENT
-                    </div>
-
-                    <h2 class="section-title">
-                        Quick access
-                    </h2>
-
-                </div>
-
-
-
-                <div class="quick-grid">
-
-
-                    <!-- Subjects -->
-
-                    <div class="quick-card" data-action="subjects">
-
-                        <div class="quick-icon">
-                            ◇
-                        </div>
-
-                        <div class="quick-info">
-
-                            <div class="quick-title">
-                                Subjects & Courses
-                            </div>
-
-                            <div class="quick-description">
-                                Manage academic records
-                            </div>
-
-                        </div>
-
-                        <div class="quick-arrow">
-                            →
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Question Types -->
-
-                    <div class="quick-card" data-action="types">
-
-                        <div class="quick-icon">
-                            ≡
-                        </div>
-
-                        <div class="quick-info">
-
-                            <div class="quick-title">
-                                Question Types
-                            </div>
-
-                            <div class="quick-description">
-                                Manage question categories
-                            </div>
-
-                        </div>
-
-                        <div class="quick-arrow">
-                            →
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Reports -->
-
-                    <div class="quick-card" data-action="reports">
-
-                        <div class="quick-icon">
-                            ▤
-                        </div>
-
-                        <div class="quick-info">
-
-                            <div class="quick-title">
-                                Reports
-                            </div>
-
-                            <div class="quick-description">
-                                Review reported content
-                            </div>
-
-                        </div>
-
-                        <div class="quick-arrow">
-                            →
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- =================================
-                 FOOTER
-                 ================================= -->
-
-            <footer class="footer">
-
-                <div class="footer-left">
-
-                    <div class="footer-chess">
-                        ♛
-                    </div>
-
-                    <div>
-
-                        <div class="footer-title">
-                            CHECKMATE ADMIN
-                        </div>
-
-                        <div class="footer-subtitle">
-                            Keep the board organized.
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="footer-links">
-                    <span>Verify.</span>
-                    <span>Manage.</span>
-                    <span>Monitor.</span>
-                </div>
-
-            </footer>
-
-        </section>
-
-    </main>
-
-
-
-    <!-- =========================================
-         TOAST MESSAGE
-         ========================================= -->
-
-    <div class="toast" id="toast"></div>
-
-
-    <!-- JavaScript -->
-    <script src="../../asset/js/admin_home.js"></script>
+</main>
 
 </body>
 </html>
