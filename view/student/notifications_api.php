@@ -113,4 +113,73 @@ if ($action === "answers") {
     }
 }
 
+/* Unseen collaboration requests (received) and accepted requests (sent) */
+
+if ($action === "collab") {
+    try {
+        $stmt = $conn->prepare(
+            "SELECT 'request' AS kind, c.collaboration_id,
+                    u.first_name, u.last_name
+             FROM collaborations c
+             INNER JOIN users u ON u.id = c.requester_id
+             WHERE c.receiver_id = ?
+               AND c.status = 'Pending'
+               AND c.receiver_seen = 0
+             UNION ALL
+             SELECT 'accepted' AS kind, c.collaboration_id,
+                    u.first_name, u.last_name
+             FROM collaborations c
+             INNER JOIN users u ON u.id = c.receiver_id
+             WHERE c.requester_id = ?
+               AND c.status = 'Accepted'
+               AND c.requester_seen = 0
+             ORDER BY collaboration_id DESC"
+        );
+
+        if (!$stmt) {
+            throw new Exception("prepare failed");
+        }
+
+        $stmt->bind_param("ii", $meId, $meId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        $requests = 0;
+        $accepted = 0;
+        $items = [];
+
+        foreach ($rows as $row) {
+            if ($row["kind"] === "request") {
+                $requests++;
+            } else {
+                $accepted++;
+            }
+
+            if (count($items) < 5) {
+                $name = trim(
+                    (string) ($row["first_name"] ?? "") . " " .
+                    (string) ($row["last_name"] ?? "")
+                );
+
+                $items[] = [
+                    "kind" => $row["kind"],
+                    "collaboration_id" => (int) $row["collaboration_id"],
+                    "name" => $name !== "" ? $name : "A student"
+                ];
+            }
+        }
+
+        respond([
+            "ok" => true,
+            "me" => $meId,
+            "requests" => $requests,
+            "accepted" => $accepted,
+            "items" => $items
+        ]);
+    } catch (Throwable $ex) {
+        respond(["ok" => false, "error" => "Unable to check collaborations."], 500);
+    }
+}
+
 respond(["ok" => false, "error" => "Unknown action."], 400);

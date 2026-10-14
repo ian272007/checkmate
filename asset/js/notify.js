@@ -1,9 +1,10 @@
 /* CHECKMATE - notifications (shared by all student pages)
    - new messages: badge on "Messages", toast, sound
    - new answers to your questions: badge on "My Questions", toast, sound
+   - new collaboration requests / accepted requests: badge on "Collaboration", toast, sound
    - total unread count in the browser tab title
-   Needs: messages_api.php (action=unread) and notifications_api.php (action=answers)
-   in view/student/ */
+   Needs: messages_api.php (action=unread) and notifications_api.php
+   (action=answers, action=collab) in view/student/ */
 
 (() => {
     "use strict";
@@ -19,6 +20,7 @@
     let audioCtx = null;
     let unreadMessages = 0;
     let unseenAnswers = 0;
+    let unseenCollab = 0;
 
     /* ---------- styles (injected, so no CSS file needs editing) ---------- */
 
@@ -43,45 +45,122 @@
 
         #cmToasts {
             position: fixed;
-            right: 18px;
-            bottom: 18px;
+            right: 20px;
+            bottom: 20px;
             z-index: 99999;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-width: 320px;
+            width: 340px;
+            max-width: calc(100vw - 32px);
+            pointer-events: none;
         }
-        .cm-toast {
-            display: block;
-            padding: 12px 14px;
-            border: 1px solid #71582d;
-            border-left: 3px solid #d4a657;
-            border-radius: 5px;
-            background: #181816;
+        #cmToasts .cm-toast {
+            all: unset;
+            box-sizing: border-box;
+            position: relative;
+            display: flex !important;
+            align-items: flex-start;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 38px 16px 14px;
+            overflow: hidden;
+            border: 1px solid #3a3022;
+            border-radius: 10px;
+            background: #14110c;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
             color: #e7e0d5;
             font-family: Arial, Helvetica, sans-serif;
-            text-decoration: none;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
-            animation: cmToastIn .25s ease;
+            cursor: pointer;
+            pointer-events: auto;
+            animation: cmToastIn .28s cubic-bezier(.2, .8, .2, 1);
         }
-        .cm-toast:hover { background: #292217; }
-        .cm-toast strong {
-            display: block;
-            margin-bottom: 4px;
+        #cmToasts .cm-toast:hover { border-color: #71582d; background: #1b1610; }
+        #cmToasts .cm-toast.cm-out { animation: cmToastOut .2s ease forwards; }
+
+        #cmToasts .cm-toast-icon {
+            all: unset;
+            box-sizing: border-box;
+            display: flex;
+            flex: 0 0 34px;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid #71582d;
+            border-radius: 50%;
+            background: #292217;
             color: #d4a657;
-            font-size: 12px;
+            font-size: 16px;
+            line-height: 1;
         }
-        .cm-toast span {
+        #cmToasts .cm-toast-body {
+            all: unset;
+            display: block;
+            flex: 1;
+            min-width: 0;
+        }
+        #cmToasts .cm-toast-title {
+            all: unset;
+            display: block;
+            margin: 0 0 3px;
+            color: #f1e6d0;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+        #cmToasts .cm-toast-text {
+            all: unset;
             display: block;
             overflow: hidden;
-            color: #c9c3b9;
-            font-size: 11px;
+            color: #a9a296;
+            font-size: 12px;
+            line-height: 1.4;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        #cmToasts .cm-toast-close {
+            all: unset;
+            box-sizing: border-box;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            color: #8d867a;
+            font-size: 15px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        #cmToasts .cm-toast-close:hover { background: #292217; color: #d4a657; }
+        #cmToasts .cm-toast-bar {
+            all: unset;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: block;
+            height: 3px;
+            background: #d4a657;
+            transform-origin: left;
+            animation: cmToastBar 7s linear forwards;
+        }
+        #cmToasts .cm-toast:hover .cm-toast-bar { animation-play-state: paused; }
+
         @keyframes cmToastIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateX(24px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes cmToastOut {
+            to { opacity: 0; transform: translateX(24px); }
+        }
+        @keyframes cmToastBar {
+            from { transform: scaleX(1); }
+            to   { transform: scaleX(0); }
         }
     `;
     document.head.appendChild(style);
@@ -115,11 +194,11 @@
     }
 
     function updateTitle() {
-        const total = unreadMessages + unseenAnswers;
+        const total = unreadMessages + unseenAnswers + unseenCollab;
         document.title = total > 0 ? `(${total}) ${BASE_TITLE}` : BASE_TITLE;
     }
 
-    function showToast(href, titleText, previewText) {
+    function showToast(href, titleText, previewText, icon = "♟") {
         let box = document.getElementById("cmToasts");
 
         if (!box) {
@@ -130,20 +209,56 @@
 
         while (box.children.length >= 3) box.firstChild.remove();
 
-        const toast = document.createElement("a");
+        const toast = document.createElement("div");
         toast.className = "cm-toast";
-        toast.href = href;
+        toast.setAttribute("role", "status");
 
-        const title = document.createElement("strong");
+        const iconEl = document.createElement("div");
+        iconEl.className = "cm-toast-icon";
+        iconEl.textContent = icon;
+
+        const body = document.createElement("div");
+        body.className = "cm-toast-body";
+
+        const title = document.createElement("div");
+        title.className = "cm-toast-title";
         title.textContent = titleText;
 
-        const preview = document.createElement("span");
+        const preview = document.createElement("div");
+        preview.className = "cm-toast-text";
         preview.textContent = previewText;
 
-        toast.append(title, preview);
+        body.append(title, preview);
+
+        const close = document.createElement("div");
+        close.className = "cm-toast-close";
+        close.setAttribute("aria-label", "Dismiss");
+        close.textContent = "×";
+
+        const bar = document.createElement("div");
+        bar.className = "cm-toast-bar";
+
+        toast.append(iconEl, body, close, bar);
         box.appendChild(toast);
 
-        setTimeout(() => toast.remove(), 7000);
+        let timer;
+
+        function dismiss() {
+            clearTimeout(timer);
+            toast.classList.add("cm-out");
+            setTimeout(() => toast.remove(), 200);
+        }
+
+        close.addEventListener("click", event => {
+            event.stopPropagation();
+            dismiss();
+        });
+
+        toast.addEventListener("click", () => {
+            window.location.href = href;
+        });
+
+        bar.addEventListener("animationend", dismiss);
     }
 
     function beep() {
@@ -230,7 +345,8 @@
                     showToast(
                         "messages.php?c=" + encodeURIComponent(latest.conversation_id),
                         "New message from " + latest.sender_name,
-                        latest.preview
+                        latest.preview,
+                        "✉"
                     );
                     beep();
                 }
@@ -267,7 +383,8 @@
                 showToast(
                     "my_question.php",
                     latest.answerer_name + " answered your question",
-                    latest.preview
+                    latest.preview,
+                    "?"
                 );
                 beep();
             }
@@ -276,9 +393,74 @@
         }
     }
 
+    /* ---------- collaboration requests / accepted requests ---------- */
+
+    function loadNotified(key) {
+        try {
+            const list = JSON.parse(storeGet(key) || "[]");
+            return Array.isArray(list) ? list : [];
+        } catch {
+            return [];
+        }
+    }
+
+    async function pollCollab() {
+        try {
+            const data = await getJson(`${ANSWERS_URL}?action=collab`);
+
+            if (!data) return;
+
+            unseenCollab = (Number(data.requests) || 0) + (Number(data.accepted) || 0);
+            setBadge("collaboration_stu.php", unseenCollab);
+            updateTitle();
+
+            const key = `cm_collab_notified_${data.me}`;
+            const notified = loadNotified(key);
+            const onPage =
+                location.pathname.endsWith("collaboration_stu.php") && !document.hidden;
+            let ring = false;
+
+            (data.items || []).forEach(item => {
+                const tag = `${item.kind}:${item.collaboration_id}`;
+
+                if (notified.includes(tag)) return;
+
+                notified.push(tag);
+
+                // Already looking at the Collaboration page: the list shows it
+                if (onPage) return;
+
+                ring = true;
+
+                if (item.kind === "accepted") {
+                    showToast(
+                        "collaboration_stu.php",
+                        item.name + " accepted your collaboration request",
+                        "You can now message each other.",
+                        "✓"
+                    );
+                } else {
+                    showToast(
+                        "collaboration_stu.php",
+                        item.name + " sent you a collaboration request",
+                        "Open Collaboration to accept or reject.",
+                        "♟"
+                    );
+                }
+            });
+
+            storeSet(key, JSON.stringify(notified.slice(-50)));
+
+            if (ring) beep();
+        } catch {
+            /* network hiccup: try again on the next poll */
+        }
+    }
+
     function pollAll() {
         pollMessages();
         pollAnswers();
+        pollCollab();
     }
 
     document.addEventListener("visibilitychange", () => {

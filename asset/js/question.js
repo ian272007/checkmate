@@ -330,3 +330,138 @@ document.addEventListener("keydown", function (event) {
 
 window.addEventListener("scroll", closeReportMenu, true);
 window.addEventListener("resize", closeReportMenu);
+
+/* =========================================================
+   Open a question from Home (questions.php#question-ID):
+   scroll to it and highlight it for a moment
+   ========================================================= */
+
+(function () {
+    const match = window.location.hash.match(/^#question-(\d+)$/);
+
+    if (!match) {
+        return;
+    }
+
+    const targetId = "question-" + match[1];
+
+    // highlight animation (no CSS file edit needed)
+    const style = document.createElement("style");
+    style.textContent =
+        "@keyframes cmPulse {" +
+        "0%{box-shadow:0 0 0 0 rgba(212,160,60,.65);}" +
+        "70%{box-shadow:0 0 0 14px rgba(212,160,60,0);}" +
+        "100%{box-shadow:0 0 0 0 rgba(212,160,60,0);}}" +
+        ".question-card.cm-highlight{" +
+        "border-color:#d4a03c !important;" +
+        "animation:cmPulse 1.2s ease-out 3;}";
+    document.head.appendChild(style);
+
+    let tries = 0;
+
+    const timer = setInterval(function () {
+        const card = document.getElementById(targetId);
+        tries++;
+
+        if (card) {
+            clearInterval(timer);
+
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+            card.classList.add("cm-highlight");
+
+            setTimeout(function () {
+                card.classList.remove("cm-highlight");
+            }, 4000);
+
+            return;
+        }
+
+        // stop after ~2 seconds: the question may have been removed
+        if (tries >= 10) {
+            clearInterval(timer);
+            showFlash("error", "That question is no longer available.");
+        }
+    }, 200);
+})();
+
+/* =========================================================
+   Open a question from Home (questions.php#question-ID):
+   scroll to it and highlight it for a moment
+   ========================================================= */
+
+(function () {
+    const match = window.location.hash.match(/^#question-(\d+)$/);
+
+    if (!match) {
+        return;
+    }
+
+    const targetId = "question-" + match[1];
+
+    // highlight animation (no CSS file edit needed)
+    const style = document.createElement("style");
+    style.textContent =
+        "@keyframes cmPulse {" +
+        "0%{box-shadow:0 0 0 0 rgba(212,160,60,.65);}" +
+        "70%{box-shadow:0 0 0 14px rgba(212,160,60,0);}" +
+        "100%{box-shadow:0 0 0 0 rgba(212,160,60,0);}}" +
+        ".question-card.cm-highlight{" +
+        "border-color:#d4a03c !important;" +
+        "animation:cmPulse 1.2s ease-out 3;}";
+    document.head.appendChild(style);
+
+    let tries = 0;
+
+    const timer = setInterval(function () {
+        const card = document.getElementById(targetId);
+        tries++;
+
+        if (card) {
+            clearInterval(timer);
+
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+            card.classList.add("cm-highlight");
+
+            setTimeout(function () {
+                card.classList.remove("cm-highlight");
+            }, 4000);
+
+            return;
+        }
+
+        // stop after ~2 seconds: the question may have been removed
+        if (tries >= 10) {
+            clearInterval(timer);
+            showFlash("error", "That question is no longer available.");
+        }
+    }, 200);
+})();
+
+/* =========================================================
+   Question typed on Home ("Make a Move"):
+   fill the question box here, then clear the saved draft
+   ========================================================= */
+
+(function () {
+    const box = document.getElementById("question");
+
+    if (!box) {
+        return;
+    }
+
+    let draft = "";
+
+    try {
+        draft = sessionStorage.getItem("cm_question_draft") || "";
+        sessionStorage.removeItem("cm_question_draft");
+    } catch (error) {
+        draft = "";
+    }
+
+    // only fill it when the box is empty (so nothing already typed is overwritten)
+    if (draft !== "" && box.value.trim() === "") {
+        box.value = draft;
+        box.focus();
+        box.setSelectionRange(box.value.length, box.value.length);
+    }
+})();

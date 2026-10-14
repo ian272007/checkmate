@@ -5,6 +5,7 @@
    - Find a peer: search students, send and cancel requests
    - Accept / Reject / Cancel without reloading the page
    - live refresh for BOTH students (checks every 2 seconds)
+   - clears the sidebar notification badge while this page is open
    ========================================================= */
 
 (() => {
@@ -90,6 +91,17 @@
         }
 
         return data;
+    }
+
+    /* Clear the sidebar badge once the student is looking at this page */
+    async function markSeen() {
+        if (document.hidden) return;
+
+        try {
+            await postAction({ action: "mark_seen" });
+        } catch {
+            /* not important */
+        }
     }
 
 
@@ -288,6 +300,9 @@
 
             // Keep the "Find a peer" list in sync (Pending / Collaborating tags)
             loadStudents();
+
+            // A new request or acceptance arrived while this page is open
+            markSeen();
         } catch {
             /* try again on the next check */
         } finally {
@@ -330,10 +345,16 @@
     window.setInterval(checkForChanges, POLL_MS);
 
     document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) checkForChanges();
+        if (!document.hidden) {
+            checkForChanges();
+            markSeen();
+        }
     });
 
-    window.addEventListener("focus", checkForChanges);
+    window.addEventListener("focus", () => {
+        checkForChanges();
+        markSeen();
+    });
 
 
     /* ---------- Find a peer ---------- */
@@ -515,5 +536,6 @@
         loadStudents();
     }
 
+    markSeen();
     applyCollabFilters();
 })();

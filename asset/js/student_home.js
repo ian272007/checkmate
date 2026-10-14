@@ -3,10 +3,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const askBox = document.getElementById("askBox");
     const askButton = document.getElementById("askButton");
 
-    const attachmentButton = document.getElementById("attachmentButton");
-    const subjectButton = document.getElementById("subjectButton");
-    const typeButton = document.getElementById("typeButton");
-
     const helpButton = document.getElementById("helpButton");
     const userMore = document.getElementById("userMore");
     const viewQuestions = document.getElementById("viewQuestions");
@@ -30,6 +26,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function openQuestionsPage() {
         window.location.href = "questions.php";
+    }
+
+    // Save what the student typed so questions.php can show it
+    function saveQuestionDraft() {
+        try {
+            const text = questionInput ? questionInput.value.trim() : "";
+
+            if (text !== "") {
+                sessionStorage.setItem("cm_question_draft", text);
+            } else {
+                sessionStorage.removeItem("cm_question_draft");
+            }
+        } catch (error) {
+            // storage not available: just continue to the page
+        }
     }
 
     function focusQuestionBox() {
@@ -69,25 +80,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (askButton) {
         askButton.addEventListener("click", function () {
+            saveQuestionDraft();
             openQuestionsPage();
-        });
-    }
-
-    if (attachmentButton) {
-        attachmentButton.addEventListener("click", function () {
-            showToast("Attachment feature will open here.");
-        });
-    }
-
-    if (subjectButton) {
-        subjectButton.addEventListener("click", function () {
-            showToast("Choose a subject here.");
-        });
-    }
-
-    if (typeButton) {
-        typeButton.addEventListener("click", function () {
-            showToast("Choose your question type here.");
         });
     }
 

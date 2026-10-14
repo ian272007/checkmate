@@ -107,7 +107,8 @@ $displayName = trim(
     ($user["last_name"] ?? "")
 );
 
-/* RECENT QUESTIONS: newest questions posted by OTHER students */
+/* RECENT QUESTIONS: newest ACTIVE questions posted by OTHER students
+   (same filter as questions.php, so the arrow always finds the question) */
 $recentQuestions = [];
 
 try {
@@ -120,6 +121,7 @@ try {
          FROM questions q
          INNER JOIN users u ON u.id = q.user_id
          WHERE q.user_id <> ?
+           AND q.status = 'Active'
          ORDER BY q.create_at DESC, q.question_id DESC
          LIMIT 3"
     );
@@ -139,7 +141,9 @@ try {
     $recentQuestions = [];
 }
 
-/* YOUR PEERS: students who have an ACCEPTED collaboration with you */
+/* YOUR PEERS: students who have an ACCEPTED collaboration with you.
+   conversation_id = newest accepted collaboration_id with that peer
+   (same rule messages_api.php uses), so the arrow opens the right chat. */
 $peers = [];
 
 try {
@@ -147,6 +151,7 @@ try {
         "SELECT u.id,
                 u.first_name,
                 u.last_name,
+                MAX(c.collaboration_id) AS conversation_id,
                 MAX(c.create_at) AS last_at
          FROM collaborations c
          INNER JOIN users u
@@ -220,6 +225,20 @@ try {
             color: #718398;
             font-size: 12px;
             line-height: 1.7;
+        }
+
+        .question-item {
+            cursor: pointer;
+        }
+
+        /* keep the arrow box from shrinking inside the question row */
+        .question-item .open-button {
+            flex-shrink: 0;
+        }
+
+        /* Make a Move button stays on the right now that the option buttons are gone */
+        .ask-bottom {
+            justify-content: flex-end;
         }
     </style>
 
@@ -391,40 +410,6 @@ try {
 
                 <div class="ask-bottom">
 
-                    <div class="ask-options">
-
-                        <!-- ATTACHMENT -->
-                        <button
-                            type="button"
-                            class="ask-option"
-                            id="attachmentButton"
-                        >
-                            <span>＋</span>
-                            Attachment
-                        </button>
-
-                        <!-- SUBJECT -->
-                        <button
-                            type="button"
-                            class="ask-option"
-                            id="subjectButton"
-                        >
-                            <span>＋</span>
-                            Subject
-                        </button>
-
-                        <!-- QUESTION TYPE -->
-                        <button
-                            type="button"
-                            class="ask-option"
-                            id="typeButton"
-                        >
-                            <span>＋</span>
-                            Question Type
-                        </button>
-
-                    </div>
-
                     <!-- MAKE A MOVE -->
                     <button
                         type="button"
@@ -559,10 +544,11 @@ try {
                         <?php if (!empty($recentQuestions)): ?>
 
                             <?php foreach ($recentQuestions as $index => $q): ?>
+                                <?php $qUrl = "questions.php#question-" . (int)$q["question_id"]; ?>
 
                                 <div
                                     class="question-item"
-                                    onclick="window.location.href='questions.php'"
+                                    onclick="window.location.href='<?= e($qUrl) ?>'"
                                 >
 
                                     <div class="question-number">
@@ -583,9 +569,14 @@ try {
 
                                     </div>
 
-                                    <div class="question-arrow">
+                                    <button
+                                        type="button"
+                                        class="open-button"
+                                        onclick="event.stopPropagation(); window.location.href='<?= e($qUrl) ?>'"
+                                        aria-label="Open question: <?= e(mb_strimwidth((string)$q["question"], 0, 60, "…", "UTF-8")) ?>"
+                                    >
                                         →
-                                    </div>
+                                    </button>
 
                                 </div>
 
@@ -635,7 +626,10 @@ try {
                         <?php if (!empty($peers)): ?>
 
                             <?php foreach ($peers as $peer): ?>
-                                <?php $peerName = personName($peer["first_name"], $peer["last_name"]); ?>
+                                <?php
+                                $peerName = personName($peer["first_name"], $peer["last_name"]);
+                                $chatUrl = "messages.php?c=" . (int)$peer["conversation_id"];
+                                ?>
 
                                 <div class="collaboration-item">
 
@@ -658,8 +652,8 @@ try {
                                     <button
                                         type="button"
                                         class="open-button"
-                                        onclick="window.location.href='collaboration_stu.php'"
-                                        aria-label="Open collaboration with <?= e($peerName) ?>"
+                                        onclick="window.location.href='<?= e($chatUrl) ?>'"
+                                        aria-label="Open conversation with <?= e($peerName) ?>"
                                     >
                                         →
                                     </button>

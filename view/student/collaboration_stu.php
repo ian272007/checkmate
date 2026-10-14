@@ -330,10 +330,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "send") {
             ], 409);
         }
 
+        /* receiver_seen = 0 -> the receiver gets a notification badge.
+           requester_seen = 1 -> the sender has nothing new to see. */
         $stmt = $conn->prepare(
             "INSERT INTO collaborations
-                (question_id, requester_id, receiver_id, status)
-             VALUES (?, ?, ?, 'Pending')"
+                (question_id, requester_id, receiver_id, status,
+                 receiver_seen, requester_seen)
+             VALUES (?, ?, ?, 'Pending', 0, 1)"
         );
         if (!$stmt) {
             throw new Exception("prepare failed");
@@ -353,6 +356,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "send") {
             "error" => "Could not send the request. Make sure the collaborations table exists."
         ], 500);
     }
+}
+
+/* Mark notifications as seen (clears the sidebar badge) */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && $postAction === "mark_seen") {
+    if (!csrfOk((string)($_POST["csrf"] ?? ""))) {
+        jsonOut(["ok" => false, "error" => "Security token invalid."], 403);
+    }
+
+    try {
+        $stmt = $conn->prepare(
+            "UPDATE collaborations SET receiver_seen = 1
+             WHERE receiver_id = ? AND receiver_seen = 0"
+        );
+        if ($stmt) {
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $stmt = $conn->prepare(
+            "UPDATE collaborations SET requester_seen = 1
+             WHERE requester_id = ? AND requester_seen = 0"
+        );
+        if ($stmt) {
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $ex) {
+        jsonOut(["ok" => false, "error" => "Could not update notifications."], 500);
+    }
+
+    jsonOut(["ok" => true]);
 }
 
 /* =========================================================
@@ -395,17 +431,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             } else {
                 $newStatus = $action === "accept" ? "Accepted" : "Rejected";
 
+                // Only an accept notifies the sender (requester_seen = 0)
+                $notifySender = $action === "accept" ? 0 : 1;
+
                 // Only the receiver can answer, and only while it is still pending.
                 $stmt = $conn->prepare(
                     "UPDATE collaborations
-                     SET status = ?
+                     SET status = ?, receiver_seen = 1, requester_seen = ?
                      WHERE collaboration_id = ?
                        AND receiver_id = ?
                        AND status = 'Pending'"
                 );
 
                 if ($stmt) {
-                    $stmt->bind_param("sii", $newStatus, $collabId, $user_id);
+                    $stmt->bind_param("siii", $newStatus, $notifySender, $collabId, $user_id);
                     $stmt->execute();
 
                     if ($stmt->affected_rows > 0) {
