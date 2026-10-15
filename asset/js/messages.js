@@ -10,8 +10,6 @@
         "Messaging is available after a collaboration request is accepted.";
 
     const state = {
-        mode: "chats",
-        users: [],
         conversations: [],
         activeConversationId: null,
         activeOtherId: null,
@@ -29,6 +27,10 @@
     const messageForm = $("messageForm");
     const messageInput = $("messageInput");
     const sendButton = $("sendButton");
+    const deleteChatButton = $("deleteChatButton");
+    const deleteModal = $("deleteModal");
+    const deleteConfirm = $("deleteConfirm");
+    const deleteCancel = $("deleteCancel");
     const composerNote = document.querySelector(".composer-note");
     const composerNoteDefault = composerNote
         ? composerNote.textContent.trim()
@@ -170,34 +172,16 @@
         const data = await api("conversations");
         state.conversations = data.conversations || [];
 
-        if (state.mode === "chats") renderList();
-
+        renderList();
         updateComposerState();
-    }
-
-    async function loadUsers() {
-        const data = await api("users", {
-            params: {
-                q: search.value.trim()
-            }
-        });
-
-        state.users = data.users || [];
-
-        if (state.mode === "people") renderList();
     }
 
     function renderList() {
         const query = search.value.trim().toLowerCase();
 
-        let entries = state.mode === "chats"
-            ? state.conversations
-            : state.users;
-
-        entries = entries.filter(item => {
-            const text = state.mode === "chats"
-                ? `${item.name} ${item.student_id} ${item.last_message || ""}`
-                : `${item.name} ${item.student_id} ${item.course || ""}`;
+        const entries = state.conversations.filter(item => {
+            const text =
+                `${item.name} ${item.student_id} ${item.last_message || ""}`;
 
             return text.toLowerCase().includes(query);
         });
@@ -205,30 +189,21 @@
         if (!entries.length) {
             list.innerHTML = `
                 <div class="list-placeholder">
-                    ${
-                        state.mode === "chats"
-                            ? 'No conversations yet.<br>Messaging opens once a collaboration request is accepted. Choose "Find people" to start a chat with your collaborators.'
-                            : "No collaborators found.<br>Only students whose collaboration request was accepted can be messaged."
-                    }
+                    No conversations yet.<br>
+                    Messaging opens once a collaboration request is accepted.
                 </div>
             `;
             return;
         }
 
         list.innerHTML = entries.map(item => {
-            const isChat = state.mode === "chats";
-            const id = isChat ? item.other_id : item.id;
-            const conversationId = isChat ? item.conversation_id : "";
-
-            const selected = isChat &&
+            const selected =
                 Number(item.conversation_id) ===
                 Number(state.activeConversationId);
 
-            const preview = isChat
-                ? (item.last_message || "Start a conversation")
-                : (item.course || item.student_id || "Student");
+            const preview = item.last_message || "Start a conversation";
 
-            const unread = isChat && Number(item.unread_count) > 0
+            const unread = Number(item.unread_count) > 0
                 ? `<span class="unread-badge">${
                     Number(item.unread_count) > 99
                         ? "99+"
@@ -240,9 +215,8 @@
                 <button
                     type="button"
                     class="person-row ${selected ? "selected" : ""}"
-                    data-kind="${isChat ? "chat" : "user"}"
-                    data-id="${Number(id)}"
-                    data-conversation="${Number(conversationId) || ""}"
+                    data-id="${Number(item.other_id)}"
+                    data-conversation="${Number(item.conversation_id)}"
                 >
                     <span class="person-avatar">
                         ${escapeHtml(initials(item.name))}
@@ -274,25 +248,6 @@
         }).join("");
     }
 
-    function setMode(mode) {
-        state.mode = mode;
-
-        document.querySelectorAll("[data-list-mode]").forEach(button => {
-            const selected = button.dataset.listMode === mode;
-            button.classList.toggle("selected", selected);
-            button.setAttribute("aria-pressed", String(selected));
-        });
-
-        search.value = "";
-        renderList();
-
-        const request = mode === "people"
-            ? loadUsers()
-            : loadConversations();
-
-        request.catch(error => showAlert(error.message));
-    }
-
     function updateChatHeader(person) {
         $("chatName").textContent = person?.name || "Student";
 
@@ -314,9 +269,6 @@
             person ||
             state.conversations.find(
                 item => Number(item.other_id) === Number(otherId)
-            ) ||
-            state.users.find(
-                item => Number(item.id) === Number(otherId)
             );
 
         updateChatHeader(state.activeOther);
@@ -333,40 +285,16 @@
         if (!messageInput.disabled) messageInput.focus();
     }
 
-    async function startConversation(userId) {
-        const person = state.users.find(
-            item => Number(item.id) === Number(userId)
-        );
+    function closeActiveChat() {
+        state.activeConversationId = null;
+        state.activeOtherId = null;
+        state.activeOther = null;
+        state.lastKey = "";
+        window.CHECKMATE_ACTIVE_CONVERSATION = null;
 
-        const data = await api("start", {
-            method: "POST",
-            data: {
-                user_id: String(userId)
-            }
-        });
-
-        state.mode = "chats";
-
-        document.querySelectorAll("[data-list-mode]").forEach(button => {
-            const selected = button.dataset.listMode === "chats";
-            button.classList.toggle("selected", selected);
-            button.setAttribute("aria-pressed", String(selected));
-        });
-
-        search.value = "";
-
-        await loadConversations();
-
-        const conversation = state.conversations.find(
-            item => Number(item.conversation_id) ===
-                    Number(data.conversation_id)
-        );
-
-        await openConversation(
-            data.conversation_id,
-            userId,
-            conversation || person
-        );
+        chatMessages.innerHTML = "";
+        activeChat.hidden = true;
+        chatEmpty.hidden = false;
     }
 
     async function loadMessages(forceScroll = false) {
@@ -377,6 +305,9 @@
                 conversation_id: state.activeConversationId
             }
         });
+
+        // the chat may have been closed/deleted while the request was running
+        if (!state.activeConversationId) return;
 
         const messages = data.messages || [];
 
@@ -478,6 +409,68 @@
         }
     }
 
+    /* ---------- delete conversation ---------- */
+
+    function openDeleteModal() {
+        if (!state.activeConversationId) return;
+
+        $("deleteModalName").textContent =
+            state.activeOther?.name || "this student";
+
+        deleteModal.hidden = false;
+        deleteCancel.focus();
+    }
+
+    function closeDeleteModal() {
+        deleteModal.hidden = true;
+    }
+
+    async function deleteConversation() {
+        const conversationId = state.activeConversationId;
+
+        if (!conversationId) {
+            closeDeleteModal();
+            return;
+        }
+
+        deleteConfirm.disabled = true;
+
+        try {
+            await api("delete", {
+                method: "POST",
+                data: {
+                    conversation_id: String(conversationId)
+                }
+            });
+
+            closeDeleteModal();
+            closeActiveChat();
+            await loadConversations();
+            showAlert("Conversation deleted.", true);
+        } catch (error) {
+            closeDeleteModal();
+            showAlert(error.message);
+        } finally {
+            deleteConfirm.disabled = false;
+        }
+    }
+
+    deleteChatButton.addEventListener("click", openDeleteModal);
+    deleteCancel.addEventListener("click", closeDeleteModal);
+    deleteConfirm.addEventListener("click", deleteConversation);
+
+    deleteModal.addEventListener("click", event => {
+        if (event.target === deleteModal) closeDeleteModal();
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !deleteModal.hidden) {
+            closeDeleteModal();
+        }
+    });
+
+    /* ---------- events ---------- */
+
     list.addEventListener("click", async event => {
         const row = event.target.closest(".person-row");
 
@@ -486,53 +479,23 @@
         try {
             showAlert("");
 
-            if (row.dataset.kind === "chat") {
-                const item = state.conversations.find(
-                    conversation =>
-                        Number(conversation.conversation_id) ===
-                        Number(row.dataset.conversation)
-                );
+            const item = state.conversations.find(
+                conversation =>
+                    Number(conversation.conversation_id) ===
+                    Number(row.dataset.conversation)
+            );
 
-                await openConversation(
-                    row.dataset.conversation,
-                    row.dataset.id,
-                    item
-                );
-            } else {
-                await startConversation(row.dataset.id);
-            }
+            await openConversation(
+                row.dataset.conversation,
+                row.dataset.id,
+                item
+            );
         } catch (error) {
             showAlert(error.message);
         }
     });
 
-    document.querySelectorAll("[data-list-mode]").forEach(button => {
-        button.addEventListener("click", () => {
-            setMode(button.dataset.listMode);
-        });
-    });
-
-    $("showUsersButton").addEventListener("click", () => {
-        setMode("people");
-    });
-
-    $("emptyNewChatButton").addEventListener("click", () => {
-        setMode("people");
-    });
-
-    let searchTimer;
-
-    search.addEventListener("input", () => {
-        renderList();
-
-        if (state.mode === "people") {
-            clearTimeout(searchTimer);
-
-            searchTimer = setTimeout(() => {
-                loadUsers().catch(error => showAlert(error.message));
-            }, 250);
-        }
-    });
+    search.addEventListener("input", renderList);
 
     messageForm.addEventListener("submit", sendMessage);
 
@@ -566,7 +529,6 @@
     async function init() {
         try {
             await loadConversations();
-            renderList();
 
             // open a chat when arriving from a notification (?c=conversation_id)
             const wanted = Number(

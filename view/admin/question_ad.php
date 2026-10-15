@@ -48,11 +48,15 @@ while ($row = $result->fetch_assoc()) {
     $subjects[] = $row["subject_name"];
 }
 
+
 // ---------- statuses for the filter ----------
-$statuses = [];
+// Active at Archived laging nandito, kahit wala pang archived na question
+$statuses = ["Active", "Archived"];
 $result = $conn->query("SELECT DISTINCT status FROM questions WHERE status IS NOT NULL ORDER BY status");
 while ($row = $result->fetch_assoc()) {
-    $statuses[] = $row["status"];
+    if (!in_array($row["status"], $statuses, true)) {
+        $statuses[] = $row["status"];
+    }
 }
 
 // ---------- sidebar numbers ----------
@@ -74,6 +78,7 @@ function e($text) {
 
     <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
     <link rel="stylesheet" href="../../asset/css/question_ad.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question_ad.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/cm_confirm.css?v=<?= filemtime(__DIR__ . '/../../asset/css/cm_confirm.css') ?>">
 </head>
 
 <body>
@@ -162,7 +167,9 @@ require __DIR__ . "/partials/admin_shell.php";
         var pendingReports = <?= $pendingReports ?>;
     </script>
 
-    <script src="../../asset/js/question_ad.js"></script>
+    <!-- styled confirm dialog (must load BEFORE question_ad.js) -->
+    <script src="../../asset/js/cm_confirm.js?v=<?= filemtime(__DIR__ . '/../../asset/js/cm_confirm.js') ?>"></script>
+    <script src="../../asset/js/question_ad.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question_ad.js') ?>"></script>
 
 </body>
 </html>

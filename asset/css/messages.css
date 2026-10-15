@@ -668,3 +668,107 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     .chat-empty p { margin-bottom: 12px; font-size: 9px; }
     .primary-btn { min-height: 29px; padding: 0 6px; font-size: 9px; }
 }
+
+/* ===================== DELETE CONVERSATION ===================== */
+
+.delete-chat-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid #5a2f2b;
+    border-radius: 4px;
+    background: #241512;
+    color: #dba09a;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    transition: background .2s ease, border-color .2s ease;
+}
+
+.delete-chat-btn:hover {
+    border-color: #c4574e;
+    background: #321b17;
+}
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgb(5 8 11 / 72%);
+}
+
+.confirm-box {
+    width: 100%;
+    max-width: 380px;
+    padding: 22px;
+    border: 1px solid #293139;
+    border-radius: 6px;
+    background: #10151a;
+    box-shadow: 0 18px 50px rgb(0 0 0 / 50%);
+}
+
+.confirm-box h3 {
+    margin: 0 0 10px;
+    color: #e7e0d5;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 400;
+}
+
+.confirm-box p {
+    margin: 0 0 20px;
+    color: #8191a2;
+    font-size: 11px;
+    line-height: 1.8;
+}
+
+.confirm-box p strong { color: #d4a657; font-weight: 600; }
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+}
+
+.ghost-btn,
+.danger-btn {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 5px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ghost-btn {
+    border: 1px solid #293139;
+    background: transparent;
+    color: #a9b3bd;
+}
+
+.ghost-btn:hover { border-color: #71582d; color: #d4a657; }
+
+.danger-btn {
+    border: 1px solid #8a3a33;
+    background: #3a1a17;
+    color: #f0b3ac;
+}
+
+.danger-btn:hover:not(:disabled) {
+    border-color: #c4574e;
+    background: #4a211d;
+}
+
+.danger-btn:disabled { opacity: .55; cursor: wait; }
+
+@media (max-width: 750px) {
+    .delete-chat-btn span:last-child { display: none; }
+    .delete-chat-btn { padding: 0 8px; }
+}

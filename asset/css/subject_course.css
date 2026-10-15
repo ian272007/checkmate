@@ -1,5 +1,4 @@
-
-        /* ---------- tweaks shared with the other pages ---------- */
+/* ---------- tweaks shared with the other pages ---------- */
 
         .sidebar-menu a.active {
             background: #1d1a14;
@@ -576,6 +575,42 @@
         .action-btn.delete:hover {
             border-color: #d0865a;
             color: #e59a6d;
+        }
+
+        /* ---------- archive / restore buttons ---------- */
+
+        .action-btn.archive {
+            background: #241e12;
+            color: #d2aa60;
+            border-color: #6b5630;
+        }
+
+        .action-btn.archive:hover {
+            border-color: #d2aa60;
+            color: #e0b96f;
+        }
+
+        .action-btn.restore {
+            background: #16231e;
+            color: #6d9b85;
+            border-color: #31483d;
+        }
+
+        .action-btn.restore:hover {
+            border-color: #6d9b85;
+            color: #8fc2aa;
+        }
+
+        /* archived badge */
+        .data-table .status.archived {
+            color: #8a949d;
+            background: #171c21;
+            border: 1px solid #343b41;
+        }
+
+        /* archived rows look faded (the button stays clear) */
+        .data-table tr.is-archived td:not(:last-child) {
+            opacity: 0.55;
         }
 
         .empty-row td {

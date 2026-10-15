@@ -621,3 +621,39 @@
     font-weight: bold;
     line-height: 1;
 }
+
+/* ---------- archive / restore buttons (idagdag sa dulo ng question_ad.css) ---------- */
+
+.action-btn.archive {
+    background: #241e12;
+    color: #d2aa60;
+    border-color: #6b5630;
+}
+
+.action-btn.archive:hover {
+    border-color: #d2aa60;
+    color: #e0b96f;
+}
+
+.action-btn.restore {
+    background: #16231e;
+    color: #6d9b85;
+    border-color: #31483d;
+}
+
+.action-btn.restore:hover {
+    border-color: #6d9b85;
+    color: #8fc2aa;
+}
+
+/* archived badge */
+.questions-table .status.archived {
+    color: #8a949d;
+    background: #171c21;
+    border: 1px solid #343b41;
+}
+
+/* archived rows look faded (the button stays clear) */
+.questions-table tr.is-archived td:not(:last-child) {
+    opacity: 0.55;
+}

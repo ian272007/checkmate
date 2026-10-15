@@ -31,11 +31,15 @@ const usernameInput =
 const forgotPassword =
     document.getElementById("forgotPassword");
 
-const registerLink =
-    document.getElementById("registerLink");
-
 const toast =
     document.getElementById("toast");
+
+// red messages under the boxes
+const idError =
+    document.getElementById("idError");
+
+const passwordError =
+    document.getElementById("passwordError");
 
 
 /* =========================================
@@ -48,6 +52,46 @@ const accountTypeInput =
 
 // start with whatever PHP put in the hidden input (student or admin)
 let accountType = accountTypeInput.value;
+
+
+/* =========================================
+   FIELD ERRORS (red message under a box)
+========================================= */
+
+function setFieldError(input, errorElement, message) {
+
+    errorElement.textContent = message;
+
+    errorElement.classList.add("show");
+
+    input.classList.add("input-error");
+
+}
+
+
+function clearFieldError(input, errorElement) {
+
+    errorElement.textContent = "";
+
+    errorElement.classList.remove("show");
+
+    input.classList.remove("input-error");
+
+}
+
+
+// the red message goes away as soon as the user types again
+usernameInput.addEventListener("input", function() {
+
+    clearFieldError(usernameInput, idError);
+
+});
+
+passwordInput.addEventListener("input", function() {
+
+    clearFieldError(passwordInput, passwordError);
+
+});
 
 
 /* =========================================
@@ -77,6 +121,10 @@ accountOptions.forEach(function(option) {
 
         /* Also save it in the hidden input so PHP receives it */
         accountTypeInput.value = accountType;
+
+
+        /* The old "wrong account type" message no longer applies */
+        clearFieldError(usernameInput, idError);
 
 
         /* Small feedback */
@@ -184,19 +232,30 @@ loginForm.addEventListener("submit", function(event) {
         passwordInput.value.trim();
 
 
+    /* Start clean */
+    clearFieldError(usernameInput, idError);
+
+    clearFieldError(passwordInput, passwordError);
+
+
+    let hasError = false;
+
+
     /* =====================================
-       CHECK USERNAME
+       CHECK STUDENT ID
     ====================================== */
 
     if (username === "") {
 
-        showToast(
-            "Please enter your username or email."
+        setFieldError(
+            usernameInput,
+            idError,
+            "Please enter your Student ID."
         );
 
         usernameInput.focus();
 
-        return;
+        hasError = true;
     }
 
 
@@ -206,13 +265,26 @@ loginForm.addEventListener("submit", function(event) {
 
     if (password === "") {
 
-        showToast(
+        setFieldError(
+            passwordInput,
+            passwordError,
             "Please enter your password."
         );
 
-        passwordInput.focus();
+        if (!hasError) {
+
+            passwordInput.focus();
+
+        }
+
+        hasError = true;
+    }
+
+
+    if (hasError) {
 
         return;
+
     }
 
 
@@ -221,7 +293,7 @@ loginForm.addEventListener("submit", function(event) {
 
        Both fields are filled in, so we
        submit the form to login.php.
-       PHP checks the username, password
+       PHP checks the Student ID, password
        and account type, then redirects
        to student_home.php or admin_home.php.
     ====================================== */
@@ -248,39 +320,19 @@ forgotPassword.addEventListener("click", function(event) {
 
 
 /* =========================================
-   REGISTER
+   ERROR FROM PHP
+
+   If login.php found a problem it already
+   printed the red message under the box.
+   Here we only move the cursor there.
 ========================================= */
 
-registerLink.addEventListener("click", function(event) {
+if (idError.classList.contains("show")) {
 
-    event.preventDefault();
+    usernameInput.focus();
 
+} else if (passwordError.classList.contains("show")) {
 
-    showToast(
-        "Registration page will open here."
-    );
-
-
-    /*
-    Later:
-
-    window.location.href =
-        "register.html";
-    */
-
-});
-
-
-/* =========================================
-   SHOW ERROR FROM PHP
-
-   If login.php found a problem (wrong
-   password, wrong account type, etc.)
-   it puts the message in data-message.
-========================================= */
-
-if (toast.dataset.message !== "") {
-
-    showToast(toast.dataset.message);
+    passwordInput.focus();
 
 }

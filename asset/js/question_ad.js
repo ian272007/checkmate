@@ -48,6 +48,15 @@ function formatId(number) {
     return "#" + text;
 }
 
+// cut long text with ... (used in the confirm popup)
+function shorten(text, max) {
+    text = String(text == null ? "" : text);
+    if (text.length > max) {
+        return text.substring(0, max) + "...";
+    }
+    return text;
+}
+
 
 // ---------- 6. SHOW THE TABLE ----------
 function showTable(list) {
@@ -58,10 +67,13 @@ function showTable(list) {
 
         var q = list[i];
 
-        // class name for the badge color (active, pending, ...)
+        // class name for the badge color (active, archived, ...)
         var statusClass = String(q.status || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        html += "<tr>";
+        // archived rows look a little faded
+        var rowClass = (q.status === "Archived") ? " class='is-archived'" : "";
+
+        html += "<tr" + rowClass + ">";
         html += "<td class='cell-id'>" + formatId(q.id) + "</td>";
         html += "<td class='title-cell' title=\"" + makeSafe(q.question) + "\">" + makeSafe(q.question) + "</td>";
         html += "<td>" + makeSafe(q.student) + "</td>";
@@ -69,7 +81,14 @@ function showTable(list) {
         html += "<td class='cell-muted'>" + makeSafe(q.type || "-") + "</td>";
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(q.status || "-") + "</span></td>";
         html += "<td>";
-        html += "<button class='action-btn delete' onclick='deleteQuestion(" + q.id + ")'>Delete</button>";
+
+        // Active question -> Archive button.  Archived question -> Restore button.
+        if (q.status === "Archived") {
+            html += "<button class='action-btn restore' onclick='changeQuestion(" + q.id + ", \"restore\")'>Restore</button>";
+        } else {
+            html += "<button class='action-btn archive' onclick='changeQuestion(" + q.id + ", \"archive\")'>Archive</button>";
+        }
+
         html += "</td>";
         html += "</tr>";
     }
@@ -120,7 +139,7 @@ categoryFilter.addEventListener("change", applyFilters);
 statusFilter.addEventListener("change", applyFilters);
 
 
-// ---------- 8. DELETE BUTTON ----------
+// ---------- 8. ARCHIVE / RESTORE BUTTON ----------
 function findQuestion(id) {
     for (var i = 0; i < questions.length; i++) {
         if (questions[i].id === id) {
@@ -130,53 +149,77 @@ function findQuestion(id) {
     return null;
 }
 
-function deleteQuestion(id) {
+// action is "archive" or "restore"
+// asks first with the styled dialog from cm_confirm.js
+function changeQuestion(id, action) {
     var q = findQuestion(id);
     if (q === null) {
         return;
     }
 
-    // ask first so nothing gets deleted by accident
-    var sure = confirm(
-        "Delete question " + formatId(q.id) + "?\n\n" + q.question +
-        "\n\nThis also deletes its answers and collaboration requests."
-    );
+    var dialog;
 
-    if (sure === false) {
-        return;
+    if (action === "archive") {
+        dialog = {
+            label: "ARCHIVE QUESTION",
+            title: "Archive question " + formatId(q.id) + "?",
+            message: shorten(q.question, 160) +
+                     "\n\nStudents will no longer see it. You can restore it later.",
+            confirmText: "Archive question",
+            cancelText: "Cancel",
+            tone: "warn"
+        };
+    } else {
+        dialog = {
+            label: "RESTORE QUESTION",
+            title: "Restore question " + formatId(q.id) + "?",
+            message: shorten(q.question, 160) +
+                     "\n\nStudents will be able to see and answer it again.",
+            confirmText: "Restore question",
+            cancelText: "Cancel",
+            tone: "warn"
+        };
     }
 
-    // tell PHP to delete it from the database
-    var body = "id=" + encodeURIComponent(id) + "&csrf=" + encodeURIComponent(csrfToken);
+    cmConfirm(dialog).then(function (confirmed) {
 
-    fetch("delete_question.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body
-    })
-    .then(function (response) {
-        return response.json();
-    })
-    .then(function (data) {
-        if (!data.success) {
-            showToast(data.message || "Could not delete the question.");
+        if (!confirmed) {
             return;
         }
 
-        // remove it from the list on the page too
-        var newList = [];
-        for (var i = 0; i < questions.length; i++) {
-            if (questions[i].id !== id) {
-                newList.push(questions[i]);
-            }
-        }
-        questions = newList;
+        // tell PHP to change the status in the database
+        var body = "id=" + encodeURIComponent(id) +
+                   "&action=" + encodeURIComponent(action) +
+                   "&csrf=" + encodeURIComponent(csrfToken);
 
-        applyFilters();
-        showToast("Question " + formatId(id) + " was deleted.");
-    })
-    .catch(function () {
-        showToast("Something went wrong. Please try again.");
+        fetch("archive_question.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body
+        })
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+            if (!data.success) {
+                showToast(data.message || "Could not update the question.");
+                return;
+            }
+
+            // update the list on the page too
+            q.status = data.status;
+
+            applyFilters();
+
+            if (action === "archive") {
+                showToast("Question " + formatId(id) + " was archived.");
+            } else {
+                showToast("Question " + formatId(id) + " was restored.");
+            }
+        })
+        .catch(function () {
+            showToast("Something went wrong. Please try again.");
+        });
     });
 }
 

@@ -700,3 +700,85 @@
         .notification {
             font-size: 30px;
         }
+
+        /* ---------- archive / restore buttons (add to the bottom of question_type.css) ---------- */
+
+.action-btn.archive {
+    background: #241e12;
+    color: #d2aa60;
+    border-color: #6b5630;
+}
+
+.action-btn.archive:hover {
+    border-color: #d2aa60;
+    color: #e0b96f;
+}
+
+.action-btn.restore {
+    background: #16231e;
+    color: #6d9b85;
+    border-color: #31483d;
+}
+
+.action-btn.restore:hover {
+    border-color: #6d9b85;
+    color: #8fc2aa;
+}
+
+.data-table .status.archived {
+    color: #8a949d;
+    background: #171c21;
+    border: 1px solid #343b41;
+}
+
+.data-table tr.is-archived td:not(:last-child) {
+    opacity: 0.55;
+}
+
+/* =========================================================
+   ARCHIVED card icon (gold circle + square, same as the picture)
+   Paste at the VERY BOTTOM of BOTH:
+     asset/css/subject_course.css
+     asset/css/question_type.css
+   ========================================================= */
+
+.stat-icon.archived {
+    position: relative;
+
+    background: #1d1a14;
+    border-color: #6b5630;
+    color: #d2aa60;
+}
+
+/* the square outline */
+.stat-icon.archived::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 14px;
+    height: 14px;
+    box-sizing: border-box;
+
+    border: 2px solid #d2aa60;
+    border-radius: 2px;
+}
+
+/* the filled orange square inside */
+.stat-icon.archived::after {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 6px;
+    height: 6px;
+
+    background: #d28933;
+    border-radius: 1px;
+}

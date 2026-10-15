@@ -307,3 +307,87 @@
         gap: 10px;
     }
 }
+
+/* status badge + Ban / Unban buttons on the Students page
+   (dark theme, same colors as student.css) */
+
+.user-status {
+    display: inline-block;
+    padding: 3px 9px;
+
+    border: 1px solid #292f34;
+    border-radius: 10px;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+}
+
+.user-status.active {
+    background: #13211a;
+    color: #6fbf8b;
+    border-color: #24422f;
+}
+
+.user-status.banned {
+    background: #261414;
+    color: #e07a7a;
+    border-color: #4a2424;
+}
+
+.ban-btn,
+.unban-btn {
+    padding: 4px 11px;
+
+    background: #171c21;
+
+    border: 1px solid #343b41;
+    border-radius: 4px;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+
+    cursor: pointer;
+}
+
+.ban-btn { color: #e07a7a; border-color: #4a2424; }
+.ban-btn:hover { background: #261414; border-color: #e07a7a; }
+
+.unban-btn { color: #6fbf8b; border-color: #24422f; }
+.unban-btn:hover { background: #13211a; border-color: #6fbf8b; }
+
+.ban-btn:disabled,
+.unban-btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* banned students look a little faded */
+tr.student-row.is-banned td {
+    opacity: 0.7;
+}
+
+/* ---------- export button ---------- */
+
+.btn-gold {
+    height: 38px;
+    padding: 0 16px;
+
+    background: transparent;
+    color: #d2aa60;
+
+    border: 1px solid #d2aa60;
+    border-radius: 5px;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+
+    cursor: pointer;
+    white-space: nowrap;
+
+    transition: background 0.2s ease;
+}
+
+.btn-gold:hover {
+    background: #1d1a14;
+}

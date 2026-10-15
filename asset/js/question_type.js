@@ -1,12 +1,8 @@
 // ---------- 1. DATA ----------
 // "types", "csrfToken" and "pendingReports" are created by question_type.php
-// (the list comes straight from the database)
 
 var PER_PAGE = 10;
 var currentPage = 1;
-
-// when editing, this holds the id being edited (null = adding new)
-var editingId = null;
 
 
 // ---------- 2. GET ELEMENTS ----------
@@ -21,7 +17,6 @@ var statusFilter = document.getElementById("statusFilter");
 var formModal = document.getElementById("formModal");
 var formError = document.getElementById("formError");
 var formName = document.getElementById("formName");
-var formStatus = document.getElementById("formStatus");
 var saveButton = document.getElementById("saveForm");
 
 
@@ -37,8 +32,6 @@ function showToast(message) {
 
 
 // ---------- 4. SMALL HELPERS ----------
-
-// so html inside a name can't break the page
 function makeSafe(text) {
     text = String(text == null ? "" : text);
     text = text.replace(/&/g, "&amp;");
@@ -49,7 +42,6 @@ function makeSafe(text) {
     return text;
 }
 
-// 1 becomes #001
 function formatId(number) {
     if (number >= 100) {
         return "#" + number;
@@ -66,7 +58,6 @@ function findType(id) {
     return null;
 }
 
-// sends one request to question_type_api.php
 function callApi(params, onDone) {
 
     var body = new URLSearchParams();
@@ -87,7 +78,6 @@ function callApi(params, onDone) {
         });
 }
 
-// builds the ‹ 1 2 3 › buttons
 function buildPagination(total) {
 
     var pages = Math.ceil(total / PER_PAGE);
@@ -127,19 +117,18 @@ function buildPagination(total) {
 function updateStats() {
 
     var active = 0;
-    var inactive = 0;
+    var archived = 0;
 
     for (var i = 0; i < types.length; i++) {
         if (types[i].status === "Active") { active++; }
-        else { inactive++; }
+        else if (types[i].status === "Archived") { archived++; }
     }
 
     document.getElementById("statTotal").textContent = types.length;
     document.getElementById("statActive").textContent = active;
-    document.getElementById("statInactive").textContent = inactive;
+    document.getElementById("statArchived").textContent = archived;
 }
 
-// clicking a summary card sets the status filter
 var statCards = document.querySelectorAll(".stat-card");
 for (var s = 0; s < statCards.length; s++) {
     statCards[s].addEventListener("click", function () {
@@ -169,7 +158,6 @@ function showTable() {
         }
     }
 
-    // make sure the page number is valid
     var pages = Math.max(1, Math.ceil(result.length / PER_PAGE));
     if (currentPage > pages) { currentPage = pages; }
     if (currentPage < 1) { currentPage = 1; }
@@ -184,14 +172,21 @@ function showTable() {
         var r = result[j];
         var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        html += "<tr>";
+        // archived rows look a little faded
+        html += "<tr" + ((r.status === "Archived") ? " class='is-archived'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.name) + "</td>";
         html += "<td class='cell-muted'>" + r.used + "</td>";
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
         html += "<td>";
-        html += "<button class='action-btn' onclick='openForm(" + r.id + ")'>Edit</button>";
-        html += "<button class='action-btn delete' onclick='deleteType(" + r.id + ")'>Delete</button>";
+
+        // Active -> Archive button.  Archived -> Restore button.
+        if (r.status === "Archived") {
+            html += "<button class='action-btn restore' onclick='changeType(" + r.id + ", \"restore\")'>Restore</button>";
+        } else {
+            html += "<button class='action-btn archive' onclick='changeType(" + r.id + ", \"archive\")'>Archive</button>";
+        }
+
         html += "</td>";
         html += "</tr>";
     }
@@ -219,67 +214,84 @@ statusFilter.addEventListener("change", function () {
 });
 
 
-// ---------- 7. DELETE ----------
-function deleteType(id) {
+// ---------- 7. ARCHIVE / RESTORE ----------
+// action is "archive" or "restore"
+// asks first with the styled dialog from cm_confirm.js
+function changeType(id, action) {
 
     var t = findType(id);
     if (t === null) {
         return;
     }
 
-    var message = "Delete question type " + formatId(t.id) + "?\n\n" + t.name;
+    var dialog;
 
-    if (t.used > 0) {
-        message += "\n\n" + t.used + " question(s) already use this type. " +
-                   "They will keep the name, but it will no longer be in the list.\n" +
-                   "Tip: set it to Inactive instead if you only want to hide it.";
+    if (action === "archive") {
+
+        var archiveMessage = t.name;
+
+        if (t.used > 0) {
+            archiveMessage += "\n\n" + t.used + " question(s) already use this type.";
+        }
+
+        archiveMessage += "\n\nIt will no longer be available to students. You can restore it later.";
+
+        dialog = {
+            label: "ARCHIVE QUESTION TYPE",
+            title: "Archive question type " + formatId(t.id) + "?",
+            message: archiveMessage,
+            confirmText: "Archive type",
+            cancelText: "Cancel",
+            tone: "warn"
+        };
+
+    } else {
+
+        dialog = {
+            label: "RESTORE QUESTION TYPE",
+            title: "Restore question type " + formatId(t.id) + "?",
+            message: t.name + "\n\nIt will be available to students again.",
+            confirmText: "Restore type",
+            cancelText: "Cancel",
+            tone: "warn"
+        };
     }
 
-    if (confirm(message) === false) {
-        return;
-    }
+    cmConfirm(dialog).then(function (confirmed) {
 
-    callApi({ action: "delete", id: id }, function (data) {
-
-        if (!data.success) {
-            showToast(data.message);
+        if (!confirmed) {
             return;
         }
 
-        var newList = [];
-        for (var i = 0; i < types.length; i++) {
-            if (types[i].id !== id) {
-                newList.push(types[i]);
-            }
-        }
-        types = newList;
+        callApi({ action: action, id: id }, function (data) {
 
-        updateStats();
-        showTable();
-        showToast(formatId(id) + " was deleted.");
+            if (!data.success) {
+                showToast(data.message);
+                return;
+            }
+
+            t.status = data.status;
+
+            updateStats();
+            showTable();
+
+            if (action === "archive") {
+                showToast("Question type " + formatId(id) + " was archived.");
+            } else {
+                showToast("Question type " + formatId(id) + " was restored.");
+            }
+        });
     });
 }
 
 
-// ---------- 8. ADD / EDIT POPUP ----------
-// openForm() with no id = add new, openForm(id) = edit that one
-function openForm(id) {
+// ---------- 8. ADD POPUP ----------
+function openForm() {
 
-    editingId = (id === undefined) ? null : id;
     formError.textContent = "";
-
-    if (editingId === null) {
-        document.getElementById("modalTitle").textContent = "Add type";
-        saveButton.textContent = "Add Type";
-        formName.value = "";
-        formStatus.value = "Active";
-    } else {
-        var t = findType(editingId);
-        document.getElementById("modalTitle").textContent = "Edit type";
-        saveButton.textContent = "Save Changes";
-        formName.value = t.name;
-        formStatus.value = t.status;
-    }
+    document.getElementById("modalTitle").textContent = "Add type";
+    saveButton.textContent = "Add Type";
+    formName.value = "";
 
     formModal.classList.add("show");
     formName.focus();
@@ -293,7 +305,6 @@ document.getElementById("cancelForm").addEventListener("click", function () {
     formModal.classList.remove("show");
 });
 
-// clicking the dark area outside the box also closes it
 formModal.addEventListener("click", function (event) {
     if (event.target === formModal) {
         formModal.classList.remove("show");
@@ -303,26 +314,16 @@ formModal.addEventListener("click", function (event) {
 saveButton.addEventListener("click", function () {
 
     var name = formName.value.trim();
-    var status = formStatus.value;
 
     if (name === "") {
         formError.textContent = "Please enter the type name.";
         return;
     }
 
-    var params = { name: name, status: status };
-
-    if (editingId === null) {
-        params.action = "add";
-    } else {
-        params.action = "update";
-        params.id = editingId;
-    }
-
-    // stop double clicks while waiting for PHP
     saveButton.disabled = true;
 
-    callApi(params, function (data) {
+    // new types are always Active
+    callApi({ action: "add", name: name, status: "Active" }, function (data) {
 
         saveButton.disabled = false;
 
@@ -331,16 +332,8 @@ saveButton.addEventListener("click", function () {
             return;
         }
 
-        if (editingId === null) {
-            types.push(data.item);
-            showToast("Question type added.");
-        } else {
-            var t = findType(editingId);
-            t.name = data.item.name;
-            t.status = data.item.status;
-            t.used = data.item.used;
-            showToast(formatId(editingId) + " was updated.");
-        }
+        types.push(data.item);
+        showToast("Question type added.");
 
         formModal.classList.remove("show");
 

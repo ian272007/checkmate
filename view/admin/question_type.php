@@ -47,6 +47,7 @@ $pendingReports = (int) $conn->query("SELECT COUNT(*) AS c FROM reports WHERE st
 
     <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
     <link rel="stylesheet" href="../../asset/css/question_type.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question_type.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/cm_confirm.css?v=<?= filemtime(__DIR__ . '/../../asset/css/cm_confirm.css') ?>">
 </head>
 
 <body>
@@ -85,11 +86,11 @@ require __DIR__ . "/partials/admin_shell.php";
                     <div class="stat-arrow">→</div>
                 </div>
 
-                <div class="stat-card" data-jump="Inactive">
-                    <div class="stat-icon red">✕</div>
+                <div class="stat-card" data-jump="Archived">
+                    <div class="stat-icon archived"></div>
                     <div class="stat-info">
-                        <div class="stat-label">Inactive Types</div>
-                        <div class="stat-number" id="statInactive">0</div>
+                        <div class="stat-label">Archived Types</div>
+                        <div class="stat-number" id="statArchived">0</div>
                     </div>
                     <div class="stat-arrow">→</div>
                 </div>
@@ -109,7 +110,7 @@ require __DIR__ . "/partials/admin_shell.php";
                 <select id="statusFilter" class="filter-select">
                     <option value="all">All Status</option>
                     <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Archived">Archived</option>
                 </select>
 
                 <button class="btn-gold" id="addButton">+ Add Type</button>
@@ -154,7 +155,7 @@ require __DIR__ . "/partials/admin_shell.php";
 
 
     <!-- =========================================
-         ADD / EDIT POPUP
+         ADD POPUP
          ========================================= -->
 
     <div class="modal-overlay" id="formModal">
@@ -167,14 +168,6 @@ require __DIR__ . "/partials/admin_shell.php";
             <div class="form-group">
                 <label for="formName">Type name</label>
                 <input type="text" id="formName" class="form-input" maxlength="100" placeholder="Assignment Help">
-            </div>
-
-            <div class="form-group">
-                <label for="formStatus">Status</label>
-                <select id="formStatus" class="filter-select">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                </select>
             </div>
 
             <div class="form-error" id="formError"></div>
@@ -198,7 +191,9 @@ require __DIR__ . "/partials/admin_shell.php";
         var pendingReports = <?= $pendingReports ?>;
     </script>
 
-    <script src="../../asset/js/question_type.js"></script>
+    <!-- styled confirm dialog (must load BEFORE question_type.js) -->
+    <script src="../../asset/js/cm_confirm.js?v=<?= filemtime(__DIR__ . '/../../asset/js/cm_confirm.js') ?>"></script>
+    <script src="../../asset/js/question_type.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question_type.js') ?>"></script>
 
 </body>
 </html>

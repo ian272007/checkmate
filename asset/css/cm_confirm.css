@@ -1,0 +1,177 @@
+/* =========================================================
+   CHECKMATE: styled confirm dialog
+   Put this file in: asset/css/cm_confirm.css
+   ========================================================= */
+
+body.cmc-open {
+    overflow: hidden;
+}
+
+.cmc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(4, 7, 10, 0.8);
+    backdrop-filter: blur(2px);
+    animation: cmcFade 0.15s ease-out;
+}
+
+.cmc-overlay.hide {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.cmc-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    padding: 28px 26px 22px;
+    border: 1px solid #2c343c;
+    border-top: 2px solid #b78d48;
+    border-radius: 6px;
+    background: #0e1317;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+    animation: cmcPop 0.18s ease-out;
+}
+
+.cmc-dialog.danger {
+    border-top-color: #b05252;
+}
+
+.cmc-icon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    border: 1px solid #71582d;
+    border-radius: 50%;
+    background: #1c1912;
+    color: #d4a657;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.cmc-dialog.danger .cmc-icon {
+    border-color: #7a3b3b;
+    background: #2a1515;
+    color: #e49a9a;
+}
+
+.cmc-label {
+    display: block;
+    color: #b78d48;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
+}
+
+.cmc-dialog.danger .cmc-label {
+    color: #c27272;
+}
+
+.cmc-dialog h3 {
+    margin: 6px 0 12px;
+    color: #e8e2d9;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.25;
+}
+
+.cmc-message p {
+    margin: 0 0 10px;
+    color: #9aa8b6;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.65;
+}
+
+.cmc-message p:last-child {
+    margin-bottom: 0;
+}
+
+.cmc-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.cmc-btn {
+    min-height: 36px;
+    padding: 0 18px;
+    border: 1px solid #353d45;
+    border-radius: 5px;
+    background: #11161b;
+    color: #b9b3a9;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.cmc-btn:hover {
+    border-color: #4a545e;
+    color: #e2ddd5;
+}
+
+.cmc-btn:focus-visible {
+    outline: 2px solid #8b6b36;
+    outline-offset: 2px;
+}
+
+.cmc-btn-confirm {
+    border-color: #71582d;
+    background: #1c1912;
+    color: #d4a657;
+    font-weight: 700;
+}
+
+.cmc-btn-confirm:hover {
+    border-color: #a07c3c;
+    background: #2a2412;
+    color: #e8bd6a;
+}
+
+.cmc-dialog.danger .cmc-btn-confirm {
+    border-color: #7a3b3b;
+    background: #2a1515;
+    color: #f0a8a8;
+}
+
+.cmc-dialog.danger .cmc-btn-confirm:hover {
+    border-color: #a04b4b;
+    background: #3a1c1c;
+    color: #ffc2c2;
+}
+
+@keyframes cmcFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes cmcPop {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 450px) {
+    .cmc-dialog {
+        padding: 22px 18px 18px;
+    }
+
+    .cmc-buttons {
+        flex-direction: column-reverse;
+    }
+
+    .cmc-btn {
+        width: 100%;
+    }
+}

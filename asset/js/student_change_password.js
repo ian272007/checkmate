@@ -29,19 +29,43 @@
     }
 
 
-    // ---------- SHOW / HIDE BUTTONS ----------
+    // ---------- SHOW / HIDE (EYE ICON) ----------
+    var SVG_OPEN =
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>' +
+        '<circle cx="12" cy="12" r="3"/></svg>';
+
+    var SVG_CLOSED =
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>' +
+        '<circle cx="12" cy="12" r="3"/>' +
+        '<line x1="3" y1="3" x2="21" y2="21"/></svg>';
+
+    function setEye(button, visible) {
+        // visible = password is currently shown
+        button.innerHTML = visible ? SVG_OPEN : SVG_CLOSED;
+        button.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+        button.setAttribute("title", visible ? "Hide password" : "Show password");
+    }
+
     var toggleButtons = document.querySelectorAll(".cp-toggle");
 
     for (var t = 0; t < toggleButtons.length; t++) {
+        setEye(toggleButtons[t], false);
+
         toggleButtons[t].addEventListener("click", function () {
             var input = document.getElementById(this.getAttribute("data-target"));
 
+            if (!input) return;
+
             if (input.type === "password") {
                 input.type = "text";
-                this.textContent = "Hide";
+                setEye(this, true);
             } else {
                 input.type = "password";
-                this.textContent = "Show";
+                setEye(this, false);
             }
         });
     }

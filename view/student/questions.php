@@ -318,17 +318,6 @@ $notices = [
     "answer_failed"   => ["error", "Your answer could not be posted. Please try again."]
 ];
 
-// Reasons shown in the three-dot report menu
-// (must match $allowedReasons in report_question_api.php)
-$reportReasons = [
-    "Inappropriate question",
-    "Incorrect subject",
-    "Spam",
-    "Inappropriate Answer",
-    "Harassment or Bullying",
-    "Misleading Information"
-];
-
 $noticeKey = (string)($_GET["notice"] ?? "");
 $flash = $notices[$noticeKey] ?? null;
 
@@ -692,15 +681,7 @@ $displayName = trim(
                                     <?php if ($alreadyReported): ?>
                                         <div class="report-done">✓ You already reported this question</div>
                                     <?php else: ?>
-                                        <div class="report-dropdown-title">Report this question</div>
-
-                                        <?php foreach ($reportReasons as $reason): ?>
-                                            <button
-                                                type="button"
-                                                class="report-option"
-                                                data-reason="<?= e($reason) ?>"
-                                            ><?= e($reason) ?></button>
-                                        <?php endforeach; ?>
+                                        <button type="button" class="report-option">⚑ Report</button>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -812,6 +793,59 @@ $displayName = trim(
     </section>
 
 </main>
+
+<!-- REPORT POPUP -->
+<div class="report-modal" id="reportModal" hidden>
+    <div class="report-modal-box" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+
+        <span class="report-modal-label">REPORT</span>
+        <h3 id="reportModalTitle">Report this question</h3>
+        <p class="report-modal-sub">
+            Tell the admin what is wrong. You can add a screenshot as proof.
+        </p>
+
+        <form id="reportForm" enctype="multipart/form-data">
+            <input type="hidden" name="question_id" id="reportQuestionId">
+            <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+
+            <label class="report-field-label">Image (optional)</label>
+
+            <div class="report-upload">
+                <button type="button" class="report-upload-btn" id="reportImagePick">+ Add image</button>
+                <span id="reportImageName">No image selected</span>
+                <input
+                    type="file"
+                    name="image"
+                    id="reportImage"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    hidden
+                >
+            </div>
+
+            <div class="report-preview" id="reportPreviewBox" hidden>
+                <img id="reportPreview" alt="Selected image preview">
+                <button type="button" id="reportImageRemove" aria-label="Remove image">×</button>
+            </div>
+
+            <label class="report-field-label" for="reportDescription">Description</label>
+            <textarea
+                id="reportDescription"
+                name="details"
+                maxlength="1000"
+                placeholder="Describe why you are reporting this question..."
+                required
+            ></textarea>
+
+            <div class="report-modal-error" id="reportError" hidden></div>
+
+            <div class="report-modal-buttons">
+                <button type="button" class="report-cancel" id="reportCancel">Cancel</button>
+                <button type="submit" class="report-submit" id="reportSubmit">Send Report →</button>
+            </div>
+        </form>
+
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../asset/js/question.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question.js') ?>"></script>

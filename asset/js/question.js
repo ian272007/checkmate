@@ -197,7 +197,7 @@ if (flashData) {
 
 
 /* =========================================================
-   Report menu (three dots)
+   Report menu (three dots) + Report popup
    ========================================================= */
 
 const questionsList = document.getElementById("questionsList");
@@ -243,8 +243,162 @@ function markReported(card) {
     dropdown.appendChild(done);
 }
 
+/* ---------- Report popup ---------- */
+
+const reportModal = document.getElementById("reportModal");
+const reportForm = document.getElementById("reportForm");
+const reportQuestionId = document.getElementById("reportQuestionId");
+const reportDescription = document.getElementById("reportDescription");
+const reportImage = document.getElementById("reportImage");
+const reportImagePick = document.getElementById("reportImagePick");
+const reportImageName = document.getElementById("reportImageName");
+const reportPreviewBox = document.getElementById("reportPreviewBox");
+const reportPreview = document.getElementById("reportPreview");
+const reportImageRemove = document.getElementById("reportImageRemove");
+const reportError = document.getElementById("reportError");
+const reportCancel = document.getElementById("reportCancel");
+const reportSubmit = document.getElementById("reportSubmit");
+
+let reportingCard = null;
+
+function clearReportImage() {
+    if (!reportImage) {
+        return;
+    }
+
+    reportImage.value = "";
+    reportImageName.textContent = "No image selected";
+    reportPreviewBox.hidden = true;
+
+    if (reportPreview.src) {
+        URL.revokeObjectURL(reportPreview.src);
+        reportPreview.removeAttribute("src");
+    }
+}
+
+function showReportError(message) {
+    reportError.textContent = message;
+    reportError.hidden = false;
+}
+
+function openReportModal(card) {
+    reportingCard = card;
+    reportQuestionId.value = card.id.replace("question-", "");
+    reportDescription.value = "";
+    reportError.hidden = true;
+    clearReportImage();
+
+    reportSubmit.disabled = false;
+    reportSubmit.textContent = "Send Report →";
+
+    reportModal.hidden = false;
+    reportDescription.focus();
+}
+
+function closeReportModal() {
+    if (!reportModal) {
+        return;
+    }
+
+    reportModal.hidden = true;
+    reportingCard = null;
+    clearReportImage();
+}
+
+if (reportModal) {
+
+    reportImagePick.addEventListener("click", function () {
+        reportImage.click();
+    });
+
+    reportImage.addEventListener("change", function () {
+        reportError.hidden = true;
+
+        if (this.files.length === 0) {
+            clearReportImage();
+            return;
+        }
+
+        const file = this.files[0];
+        const okTypes = ["image/jpeg", "image/png", "image/webp"];
+
+        if (okTypes.indexOf(file.type) === -1) {
+            clearReportImage();
+            showReportError("Only JPG, PNG or WEBP images are allowed.");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            clearReportImage();
+            showReportError("Image must be 5 MB or smaller.");
+            return;
+        }
+
+        reportImageName.textContent = file.name;
+        reportPreview.src = URL.createObjectURL(file);
+        reportPreviewBox.hidden = false;
+    });
+
+    reportImageRemove.addEventListener("click", clearReportImage);
+    reportCancel.addEventListener("click", closeReportModal);
+
+    // click the dark area outside the box
+    reportModal.addEventListener("click", function (event) {
+        if (event.target === reportModal) {
+            closeReportModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !reportModal.hidden) {
+            closeReportModal();
+        }
+    });
+
+    reportForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const description = reportDescription.value.trim();
+
+        if (description === "") {
+            showReportError("Please write a description.");
+            return;
+        }
+
+        reportError.hidden = true;
+        reportSubmit.disabled = true;
+        reportSubmit.textContent = "Sending...";
+
+        fetch("report_question_api.php", {
+            method: "POST",
+            body: new FormData(reportForm)
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.success || data.already) {
+                    if (reportingCard) {
+                        markReported(reportingCard);
+                    }
+                    closeReportModal();
+                    showFlash(data.success ? "success" : "error", data.message);
+                    return;
+                }
+
+                showReportError(data.message);
+                reportSubmit.disabled = false;
+                reportSubmit.textContent = "Send Report →";
+            })
+            .catch(function () {
+                showReportError("Something went wrong. Please try again.");
+                reportSubmit.disabled = false;
+                reportSubmit.textContent = "Send Report →";
+            });
+    });
+}
+
 if (questionsList) {
-    const reportCsrf = questionsList.dataset.csrf || "";
 
     questionsList.addEventListener("click", function (event) {
 
@@ -270,7 +424,7 @@ if (questionsList) {
             return;
         }
 
-        // choose a reason
+        // "Report" pressed -> open the popup
         const option = event.target.closest(".report-option");
 
         if (!option) {
@@ -278,40 +432,9 @@ if (questionsList) {
         }
 
         const card = option.closest(".question-card");
-        const questionId = card.id.replace("question-", "");
-        const reason = option.dataset.reason;
 
-        if (!confirm('Report this question as "' + reason + '"?')) {
-            return;
-        }
-
-        option.disabled = true;
-
-        const body = new URLSearchParams();
-        body.append("question_id", questionId);
-        body.append("reason", reason);
-        body.append("csrf", reportCsrf);
-
-        fetch("report_question_api.php", { method: "POST", body: body })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                closeReportMenu();
-
-                if (data.success || data.already) {
-                    markReported(card);
-                }
-
-                showFlash(data.success ? "success" : "error", data.message);
-            })
-            .catch(function () {
-                closeReportMenu();
-                showFlash("error", "Something went wrong. Please try again.");
-            })
-            .finally(function () {
-                option.disabled = false;
-            });
+        closeReportMenu();
+        openReportModal(card);
     });
 }
 
@@ -331,58 +454,6 @@ document.addEventListener("keydown", function (event) {
 window.addEventListener("scroll", closeReportMenu, true);
 window.addEventListener("resize", closeReportMenu);
 
-/* =========================================================
-   Open a question from Home (questions.php#question-ID):
-   scroll to it and highlight it for a moment
-   ========================================================= */
-
-(function () {
-    const match = window.location.hash.match(/^#question-(\d+)$/);
-
-    if (!match) {
-        return;
-    }
-
-    const targetId = "question-" + match[1];
-
-    // highlight animation (no CSS file edit needed)
-    const style = document.createElement("style");
-    style.textContent =
-        "@keyframes cmPulse {" +
-        "0%{box-shadow:0 0 0 0 rgba(212,160,60,.65);}" +
-        "70%{box-shadow:0 0 0 14px rgba(212,160,60,0);}" +
-        "100%{box-shadow:0 0 0 0 rgba(212,160,60,0);}}" +
-        ".question-card.cm-highlight{" +
-        "border-color:#d4a03c !important;" +
-        "animation:cmPulse 1.2s ease-out 3;}";
-    document.head.appendChild(style);
-
-    let tries = 0;
-
-    const timer = setInterval(function () {
-        const card = document.getElementById(targetId);
-        tries++;
-
-        if (card) {
-            clearInterval(timer);
-
-            card.scrollIntoView({ behavior: "smooth", block: "center" });
-            card.classList.add("cm-highlight");
-
-            setTimeout(function () {
-                card.classList.remove("cm-highlight");
-            }, 4000);
-
-            return;
-        }
-
-        // stop after ~2 seconds: the question may have been removed
-        if (tries >= 10) {
-            clearInterval(timer);
-            showFlash("error", "That question is no longer available.");
-        }
-    }, 200);
-})();
 
 /* =========================================================
    Open a question from Home (questions.php#question-ID):
@@ -436,6 +507,7 @@ window.addEventListener("resize", closeReportMenu);
         }
     }, 200);
 })();
+
 
 /* =========================================================
    Question typed on Home ("Make a Move"):
@@ -458,10 +530,8 @@ window.addEventListener("resize", closeReportMenu);
         draft = "";
     }
 
-    // only fill it when the box is empty (so nothing already typed is overwritten)
     if (draft !== "" && box.value.trim() === "") {
         box.value = draft;
         box.focus();
-        box.setSelectionRange(box.value.length, box.value.length);
     }
 })();

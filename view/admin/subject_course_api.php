@@ -1,6 +1,6 @@
 <?php
 // subject_course_api.php - called by subject_course.js
-// Handles: add, update, delete for courses and subjects.
+// Handles: add, update, archive, restore, delete for courses and subjects.
 // Always answers with JSON: { "success": true/false, "message": "...", "item": {...} }
 
 session_start();
@@ -153,6 +153,35 @@ try {
 
         reply(true, ucfirst($word) . " updated.", [
             "item" => ["id" => $id, "name" => $name, "status" => $status, "used" => countUsed($conn, $qcol, $name)]
+        ]);
+    }
+
+    // ---------- ARCHIVE / RESTORE ----------
+    if ($action === "archive" || $action === "restore") {
+
+        if ($id <= 0) {
+            reply(false, "Invalid id.", [], 400);
+        }
+
+        $stmt = $conn->prepare("SELECT id FROM $table WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $found = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+
+        if (!$found) {
+            reply(false, ucfirst($word) . " not found.", [], 404);
+        }
+
+        $newStatus = ($action === "archive") ? "Archived" : "Active";
+
+        $stmt = $conn->prepare("UPDATE $table SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $newStatus, $id);
+        $stmt->execute();
+        $stmt->close();
+
+        reply(true, ucfirst($word) . ($action === "archive" ? " archived." : " restored."), [
+            "status" => $newStatus
         ]);
     }
 

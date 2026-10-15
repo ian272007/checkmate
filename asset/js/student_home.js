@@ -1,13 +1,35 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const questionForm = document.getElementById("questionForm");
     const questionInput = document.getElementById("questionInput");
     const askBox = document.getElementById("askBox");
     const askButton = document.getElementById("askButton");
+    const askButtonLabel = document.getElementById("askButtonLabel");
 
     const helpButton = document.getElementById("helpButton");
     const userMore = document.getElementById("userMore");
     const viewQuestions = document.getElementById("viewQuestions");
 
     const toast = document.getElementById("toast");
+
+    /* Ask a Question fields */
+    const askSubject = document.getElementById("askSubject");
+    const askCourse = document.getElementById("askCourse");
+    const askType = document.getElementById("askType");
+    const askMessage = document.getElementById("askMessage");
+
+    /* Attachment */
+    const attachPlus = document.getElementById("attachPlus");
+    const attachMenu = document.getElementById("attachMenu");
+    const attachInput = document.getElementById("attachInput");
+    const attachName = document.getElementById("attachName");
+    const attachClear = document.getElementById("attachClear");
+
+    const ATTACH_DEFAULT_TEXT = "Add attachment (optional)";
+    const PHOTO_ACCEPT = ".jpg,.jpeg,.png";
+    const FILE_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.xls,.xlsx,.csv";
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB, same as the server
+
+    let isPosting = false;
 
     function showToast(message) {
         if (!toast) {
@@ -28,19 +50,269 @@ document.addEventListener("DOMContentLoaded", function () {
         window.location.href = "questions.php";
     }
 
-    // Save what the student typed so questions.php can show it
-    function saveQuestionDraft() {
-        try {
-            const text = questionInput ? questionInput.value.trim() : "";
+    /* ---------- Message above the Make a Move button ---------- */
 
-            if (text !== "") {
-                sessionStorage.setItem("cm_question_draft", text);
-            } else {
-                sessionStorage.removeItem("cm_question_draft");
-            }
-        } catch (error) {
-            // storage not available: just continue to the page
+    function showAskMessage(text, isSuccess) {
+        if (!askMessage) {
+            return;
         }
+
+        askMessage.textContent = text;
+        askMessage.classList.toggle("is-success", Boolean(isSuccess));
+        askMessage.hidden = false;
+    }
+
+    function showPostedMessage() {
+        if (!askMessage) {
+            return;
+        }
+
+        askMessage.textContent = "Your question has been posted. ";
+
+        const link = document.createElement("a");
+        link.href = "my_question.php";
+        link.textContent = "View in My Questions →";
+
+        askMessage.appendChild(link);
+        askMessage.classList.add("is-success");
+        askMessage.hidden = false;
+    }
+
+    function hideAskMessage() {
+        if (askMessage) {
+            askMessage.hidden = true;
+            askMessage.classList.remove("is-success");
+        }
+    }
+
+    /* ---------- Attachment menu ---------- */
+
+    function closeAttachMenu() {
+        if (!attachMenu || !attachPlus) {
+            return;
+        }
+
+        attachMenu.hidden = true;
+        attachPlus.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleAttachMenu() {
+        if (!attachMenu || !attachPlus) {
+            return;
+        }
+
+        const willOpen = attachMenu.hidden;
+
+        attachMenu.hidden = !willOpen;
+        attachPlus.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    }
+
+    function resetAttachment() {
+        if (attachInput) {
+            attachInput.value = "";
+        }
+
+        if (attachName) {
+            attachName.textContent = ATTACH_DEFAULT_TEXT;
+            attachName.classList.remove("has-file");
+        }
+
+        if (attachClear) {
+            attachClear.hidden = true;
+        }
+    }
+
+    if (attachPlus) {
+        attachPlus.addEventListener("click", function (event) {
+            event.stopPropagation();
+            toggleAttachMenu();
+        });
+    }
+
+    if (attachMenu && attachInput) {
+        attachMenu.querySelectorAll(".attach-option").forEach(function (option) {
+            option.addEventListener("click", function (event) {
+                event.stopPropagation();
+
+                attachInput.accept =
+                    option.dataset.attachment === "photos"
+                        ? PHOTO_ACCEPT
+                        : FILE_ACCEPT;
+
+                closeAttachMenu();
+                attachInput.click();
+            });
+        });
+
+        attachInput.addEventListener("change", function () {
+            const file = attachInput.files && attachInput.files[0];
+
+            if (!file) {
+                resetAttachment();
+                return;
+            }
+
+            if (file.size > MAX_FILE_SIZE) {
+                resetAttachment();
+                showAskMessage("That file is too big. Please choose one that is 5 MB or smaller.");
+                return;
+            }
+
+            hideAskMessage();
+
+            if (attachName) {
+                attachName.textContent = file.name;
+                attachName.classList.add("has-file");
+            }
+
+            if (attachClear) {
+                attachClear.hidden = false;
+            }
+        });
+    }
+
+    if (attachClear) {
+        attachClear.addEventListener("click", resetAttachment);
+    }
+
+    // click outside / Escape closes the menu
+    document.addEventListener("click", function (event) {
+        if (
+            attachMenu &&
+            !attachMenu.hidden &&
+            !attachMenu.contains(event.target) &&
+            event.target !== attachPlus
+        ) {
+            closeAttachMenu();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeAttachMenu();
+        }
+    });
+
+    /* ---------- Clear the red outline when a field is fixed ---------- */
+
+    [askSubject, askCourse, askType].forEach(function (select) {
+        if (!select) {
+            return;
+        }
+
+        select.addEventListener("change", function () {
+            select.classList.remove("is-invalid");
+            hideAskMessage();
+        });
+    });
+
+    if (questionInput) {
+        questionInput.addEventListener("input", function () {
+            questionInput.classList.remove("is-invalid");
+            hideAskMessage();
+        });
+    }
+
+    /* ---------- Validation ---------- */
+
+    function validateAsk() {
+        const text = questionInput ? questionInput.value.trim() : "";
+
+        if (text === "") {
+            questionInput.classList.add("is-invalid");
+            showAskMessage("Please write your question first.");
+            questionInput.focus();
+            return false;
+        }
+
+        let valid = true;
+
+        [askSubject, askCourse, askType].forEach(function (select) {
+            if (select && select.value === "") {
+                select.classList.add("is-invalid");
+                valid = false;
+            }
+        });
+
+        if (!valid) {
+            showAskMessage("Please choose a subject, a course, and a question type.");
+        }
+
+        return valid;
+    }
+
+    /* ---------- Post the question straight from Home ---------- */
+
+    function setPosting(posting) {
+        isPosting = posting;
+
+        if (askButton) {
+            askButton.disabled = posting;
+        }
+
+        if (askButtonLabel) {
+            askButtonLabel.textContent = posting ? "Posting..." : "Make a Move";
+        }
+    }
+
+    function clearAskForm() {
+        if (questionInput) {
+            questionInput.value = "";
+            questionInput.classList.remove("is-invalid");
+        }
+
+        [askSubject, askCourse, askType].forEach(function (select) {
+            if (select) {
+                select.selectedIndex = 0;
+                select.classList.remove("is-invalid");
+            }
+        });
+
+        resetAttachment();
+    }
+
+    function postQuestion() {
+        if (isPosting || !validateAsk()) {
+            return;
+        }
+
+        hideAskMessage();
+
+        const body = new FormData();
+        body.append("csrf", questionForm ? questionForm.dataset.csrf || "" : "");
+        body.append("question", questionInput.value.trim());
+        body.append("subject", askSubject.value);
+        body.append("question_course", askCourse.value);
+        body.append("question_type", askType.value);
+
+        if (attachInput && attachInput.files && attachInput.files[0]) {
+            body.append("attachment", attachInput.files[0]);
+        }
+
+        setPosting(true);
+
+        fetch("question_post_api.php", {
+            method: "POST",
+            body: body
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.success) {
+                    clearAskForm();
+                    showPostedMessage();
+                    showToast("Your question has been posted.");
+                } else {
+                    showAskMessage(data.message || "Could not post your question.");
+                }
+            })
+            .catch(function () {
+                showAskMessage("Something went wrong. Please try again.");
+            })
+            .finally(function () {
+                setPosting(false);
+            });
     }
 
     function focusQuestionBox() {
@@ -76,13 +348,18 @@ document.addEventListener("DOMContentLoaded", function () {
         questionInput.addEventListener("blur", function () {
             askBox.classList.remove("focused");
         });
+
+        // Ctrl + Enter posts the question
+        questionInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                postQuestion();
+            }
+        });
     }
 
     if (askButton) {
-        askButton.addEventListener("click", function () {
-            saveQuestionDraft();
-            openQuestionsPage();
-        });
+        askButton.addEventListener("click", postQuestion);
     }
 
     if (helpButton) {

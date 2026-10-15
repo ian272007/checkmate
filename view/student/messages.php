@@ -84,10 +84,8 @@ $csrf = $_SESSION["messages_csrf"];
     <script src="../../asset/js/notify.js" defer></script>
     <script src="../../asset/js/user_menu.js" defer></script>
 
-    <!-- Shared student shell (sidebar, topbar, page layout): same file as Collaboration -->
     <link rel="stylesheet"
           href="../../asset/css/question.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/question.css') ?>">
-    <!-- Messages-only styles (messenger / chat) -->
     <link rel="stylesheet"
           href="../../asset/css/messages.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/messages.css') ?>">
 
@@ -142,7 +140,6 @@ $csrf = $_SESSION["messages_csrf"];
         </a>
     </div>
 
-    <!-- SIDEBAR USER: same markup as questions.php -->
     <div class="sidebar-user">
         <div class="user-avatar"><?= e($initials) ?></div>
 
@@ -189,12 +186,6 @@ $csrf = $_SESSION["messages_csrf"];
                         <span class="eyebrow">YOUR INBOX</span>
                         <h2>Messages</h2>
                     </div>
-
-                    <button id="showUsersButton"
-                            class="new-chat-btn"
-                            type="button"
-                            aria-label="Find students"
-                            title="Find students">+</button>
                 </div>
 
                 <label class="search-wrap">
@@ -202,22 +193,10 @@ $csrf = $_SESSION["messages_csrf"];
 
                     <input id="conversationSearch"
                            type="search"
-                           placeholder="Search students..."
+                           placeholder="Search conversations..."
                            autocomplete="off"
-                           aria-label="Search conversations or students">
+                           aria-label="Search conversations">
                 </label>
-
-                <div class="list-tabs">
-                    <button class="list-tab selected"
-                            data-list-mode="chats"
-                            type="button"
-                            aria-pressed="true">Chats</button>
-
-                    <button class="list-tab"
-                            data-list-mode="people"
-                            type="button"
-                            aria-pressed="false">Find people</button>
-                </div>
 
                 <div id="peopleList"
                      class="people-list"
@@ -232,14 +211,7 @@ $csrf = $_SESSION["messages_csrf"];
 
                     <h2>Your conversations</h2>
 
-                    <p>
-                        Select a conversation or find a collaborator
-                        to start a private chat.
-                    </p>
-
-                    <button id="emptyNewChatButton"
-                            type="button"
-                            class="primary-btn">Find students</button>
+                    <p>Select a conversation to start chatting privately.</p>
                 </div>
 
                 <div id="activeChat" class="active-chat" hidden>
@@ -252,6 +224,14 @@ $csrf = $_SESSION["messages_csrf"];
                         </div>
 
                         <span class="private-label">PRIVATE CHAT</span>
+
+                        <button id="deleteChatButton"
+                                class="delete-chat-btn"
+                                type="button"
+                                title="Delete conversation">
+                            <span aria-hidden="true">🗑</span>
+                            <span>Delete</span>
+                        </button>
                     </header>
 
                     <div id="chatMessages"
@@ -292,6 +272,21 @@ $csrf = $_SESSION["messages_csrf"];
 
     </section>
 </main>
+
+<!-- Delete confirmation -->
+<div id="deleteModal" class="confirm-overlay" hidden>
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <h3 id="deleteModalTitle">Delete conversation?</h3>
+        <p>
+            This removes the conversation with <strong id="deleteModalName">this student</strong>
+            from your inbox. The other student will still keep their copy.
+        </p>
+        <div class="confirm-actions">
+            <button id="deleteCancel" type="button" class="ghost-btn">Cancel</button>
+            <button id="deleteConfirm" type="button" class="danger-btn">Delete</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

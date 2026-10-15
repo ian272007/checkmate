@@ -1,13 +1,15 @@
 // ---------- 1. GET ELEMENTS ----------
 // the table rows are made by student.php (from the database),
-// so this file only has to search and filter them
+// so this file only has to search, filter, and export
 var toast = document.getElementById("toast");
 var showingText = document.getElementById("showingText");
 var noMatchRow = document.getElementById("noMatchRow");
+var studentsBody = document.getElementById("studentsBody");
 
 var searchInput = document.getElementById("searchInput");
 var courseFilter = document.getElementById("courseFilter");
 var yearFilter = document.getElementById("yearFilter");
+var statusFilter = document.getElementById("statusFilter");
 
 // every student row in the table
 var rows = document.querySelectorAll("#studentsBody tr.student-row");
@@ -36,14 +38,14 @@ var currentPage = 1;
 // the rows that match the search and filters (all pages together)
 var matchingRows = [];
 
-// step 1: find the rows that match the search box and the two filters
-function applyFilters() {
+// step 1: find the rows that match the search box and the filters
+function applyFilters(keepPage) {
 
     var searchText = searchInput.value.toLowerCase().trim();
     var course = courseFilter.value;
     var year = yearFilter.value;
+    var status = statusFilter.value;
 
-    // start with an empty list
     matchingRows = [];
 
     for (var i = 0; i < rows.length; i++) {
@@ -58,20 +60,21 @@ function applyFilters() {
                             row.dataset.email.toLowerCase().indexOf(searchText) !== -1;
         }
 
-        // check the course filter
         var matchesCourse = (course === "all" || row.dataset.course === course);
-
-        // check the year level filter
         var matchesYear = (year === "all" || row.dataset.year === year);
+        var matchesStatus = (status === "all" || row.dataset.status === status);
 
-        // only keep the row if all 3 are true
-        if (matchesSearch && matchesCourse && matchesYear) {
+        // only keep the row if all 4 are true
+        if (matchesSearch && matchesCourse && matchesYear && matchesStatus) {
             matchingRows.push(row);
         }
     }
 
-    // a new search or filter always goes back to page 1
-    currentPage = 1;
+    // a new search or filter goes back to page 1
+    if (keepPage !== true) {
+        currentPage = 1;
+    }
+
     showPage();
 }
 
@@ -80,18 +83,15 @@ function showPage() {
 
     var total = matchingRows.length;
 
-    // how many pages we need (at least 1, even when there are no students)
     var totalPages = Math.ceil(total / rowsPerPage);
     if (totalPages === 0) {
         totalPages = 1;
     }
 
-    // safety: never go past the last page
     if (currentPage > totalPages) {
         currentPage = totalPages;
     }
 
-    // example: page 2 starts at index 10 and stops before index 20
     var start = (currentPage - 1) * rowsPerPage;
     var end = start + rowsPerPage;
 
@@ -114,7 +114,7 @@ function showPage() {
         }
     }
 
-    // update the text under the table (example: Showing 11–20 of 25 students)
+    // update the text under the table
     if (total === 0) {
         showingText.textContent = "Showing 0 of 0 students";
     } else {
@@ -131,10 +131,8 @@ function showPage() {
 // step 3: make the page buttons ( ‹  1  2  3  › )
 function buildPagination(totalPages) {
 
-    // clear the old buttons first
     pagination.innerHTML = "";
 
-    // previous button (turned off on page 1)
     var prevButton = document.createElement("button");
     prevButton.className = "page-btn";
     prevButton.textContent = "‹";
@@ -145,13 +143,10 @@ function buildPagination(totalPages) {
     });
     pagination.appendChild(prevButton);
 
-    // one button for each page number
-    // TODO: show "..." when there are a lot of pages
     for (var p = 1; p <= totalPages; p++) {
         pagination.appendChild(makePageButton(p));
     }
 
-    // next button (turned off on the last page)
     var nextButton = document.createElement("button");
     nextButton.className = "page-btn";
     nextButton.textContent = "›";
@@ -163,14 +158,13 @@ function buildPagination(totalPages) {
     pagination.appendChild(nextButton);
 }
 
-// makes one numbered button (it is in its own function so every button remembers its own number)
+// makes one numbered button
 function makePageButton(pageNumber) {
 
     var button = document.createElement("button");
     button.className = "page-btn";
     button.textContent = pageNumber;
 
-    // the page we are on gets the gold look
     if (pageNumber === currentPage) {
         button.className = "page-btn current";
     }
@@ -183,33 +177,58 @@ function makePageButton(pageNumber) {
     return button;
 }
 
-searchInput.addEventListener("input", applyFilters);
-courseFilter.addEventListener("change", applyFilters);
-yearFilter.addEventListener("change", applyFilters);
+searchInput.addEventListener("input", function () { applyFilters(); });
+courseFilter.addEventListener("change", function () { applyFilters(); });
+yearFilter.addEventListener("change", function () { applyFilters(); });
+statusFilter.addEventListener("change", function () { applyFilters(); });
 
 // run it once when the page opens so only the first 10 students show
 applyFilters();
 
 
-// ---------- 4. VIEW AND EDIT BUTTONS ----------
-// the name and student id come from the data-* attributes of the row
-for (var i = 0; i < rows.length; i++) {
+// ---------- 4. EXPORT ----------
+// downloads the students that match the search/filters (all pages) as a csv file
+function csvSafe(text) {
+    text = String(text == null ? "" : text);
 
-    var viewButton = rows[i].querySelector(".view-btn");
-    var editButton = rows[i].querySelector(".edit-btn");
+    // stops Excel from running a cell that starts with = + - @
+    if (/^[=+\-@]/.test(text)) {
+        text = "'" + text;
+    }
 
-    viewButton.addEventListener("click", function () {
-        var row = this.closest("tr");
-        // TODO: open a real student profile page
-        showToast("Viewing " + row.dataset.name + " (" + row.dataset.studentid + ")");
-    });
-
-    editButton.addEventListener("click", function () {
-        var row = this.closest("tr");
-        // TODO: open an edit form
-        showToast("Editing " + row.dataset.name + "...");
-    });
+    return '"' + text.replace(/"/g, '""') + '"';
 }
+
+document.getElementById("exportButton").addEventListener("click", function () {
+
+    // matchingRows already holds every student that passes the search and filters
+    if (matchingRows.length === 0) {
+        showToast("There are no students to export.");
+        return;
+    }
+
+    var csv = "ID,Full Name,Student ID,Email,Course,Year Level\n";
+
+    for (var i = 0; i < matchingRows.length; i++) {
+        var d = matchingRows[i].dataset;
+        csv += [
+            csvSafe(d.id),
+            csvSafe(d.name),
+            csvSafe(d.studentid),
+            csvSafe(d.email),
+            csvSafe(d.course),
+            csvSafe(d.year)
+        ].join(",") + "\n";
+    }
+
+    var blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "checkmate_students.csv";
+    link.click();
+
+    showToast("Students exported.");
+});
 
 
 // ---------- 5. NOTIFICATION BUTTON ----------

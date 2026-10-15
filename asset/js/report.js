@@ -204,17 +204,41 @@ function showTable() {
         var r = result[j];
         var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        html += "<tr" + (highlighted[r.id] ? " class='new-row'" : "") + ">";
+        // new rows get a highlight, archived rows look a little faded
+        var rowClass = "";
+        if (highlighted[r.id]) { rowClass += " new-row"; }
+        if (r.status === "Archived") { rowClass += " is-archived"; }
+
+        html += "<tr" + (rowClass ? " class='" + rowClass.trim() + "'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.reason) + "</td>";
         html += "<td class='title-cell' title=\"" + makeSafe(r.question) + "\">" + makeSafe(r.question) + "</td>";
-        html += "<td>" + makeSafe(r.student) + "</td>";
+        html += "<td>" + makeSafe(r.student) +
+                (r.student_status === "Banned" ? " <span class='banned-tag'>Banned</span>" : "") + "</td>";
         html += "<td class='cell-muted'>" + makeSafe(r.reporter) + "</td>";
         html += "<td class='cell-muted'>" + makeSafe(r.date) + "</td>";
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
         html += "<td>";
-        html += "<button class='action-btn' onclick='openView(" + r.id + ")'>View</button>";
-        html += "<button class='action-btn delete' onclick='deleteReport(" + r.id + ")'>Delete</button>";
+
+        // View (gray button)
+        html += "<button class='action-btn view' onclick='openView(" + r.id + ")'>View</button>";
+
+        // Warning: removes the post and warns the student
+        if (r.student_uid === null || r.question_deleted) {
+            html += "<button class='action-btn warn' disabled title='Question or student not found'>Warning</button>";
+        } else {
+            html += "<button class='action-btn warn' onclick='warnStudent(" + r.id + ")'>Warning</button>";
+        }
+
+        // Ban / Unban the reported student
+        if (r.student_uid === null) {
+            html += "<button class='action-btn ban' disabled title='Student not found'>Ban</button>";
+        } else if (r.student_status === "Banned") {
+            html += "<button class='action-btn unban' onclick='banStudent(" + r.id + ", \"unban\")'>Unban</button>";
+        } else {
+            html += "<button class='action-btn ban' onclick='banStudent(" + r.id + ", \"ban\")'>Ban</button>";
+        }
+
         html += "</td>";
         html += "</tr>";
     }
@@ -292,6 +316,16 @@ function openView(id) {
     // what the reporter wrote
     document.getElementById("viewDetails").textContent = r.details ? r.details : "No details were provided.";
 
+        // picture the reporter attached
+    var reportImgBox = document.getElementById("viewReportImage");
+    reportImgBox.innerHTML = "";
+
+    if (r.image) {
+        var reportImgUrl = uploadUrl + "reports/" + encodeURIComponent(r.image);
+        reportImgBox.innerHTML = "<a href=\"" + makeSafe(reportImgUrl) + "\" target=\"_blank\" rel=\"noopener\">" +
+                                 "<img class='attach-img' src=\"" + makeSafe(reportImgUrl) + "\" alt='Reporter image'></a>";
+    }
+
     viewStatus.value = r.status;
 
     viewModal.classList.add("show");
@@ -338,45 +372,108 @@ saveViewButton.addEventListener("click", function () {
 });
 
 
-// ---------- 7. DELETE ----------
-function deleteReport(id) {
+// ---------- 7. WARNING ----------
+// removes the reported post, warns the student and resolves the report
+// (asks first with the styled dialog from cm_confirm.js)
+function warnStudent(id) {
 
     var r = findReport(id);
     if (r === null) {
         return;
     }
 
-    var sure = confirm("Delete report " + formatId(r.id) + "?\n\n" + r.reason +
-                       "\n\nThis will also permanently delete the reported question, " +
-                       "its answers, and all other reports about it.");
+    cmConfirm({
+        label: "WARN STUDENT",
+        title: "Warn " + r.student + "?",
+        message: "Their reported question will be removed and this report will be marked Resolved.\n\n" +
+                 "They will see a warning the next time they open their home page.",
+        confirmText: "Send warning",
+        cancelText: "Cancel",
+        tone: "warn"
+    }).then(function (confirmed) {
 
-    if (sure === false) {
-        return;
-    }
-
-    callApi({ action: "delete", id: id }, function (data) {
-
-        if (!data.success) {
-            showToast(data.message);
+        if (!confirmed) {
             return;
         }
 
-        var deletedQuestionId = r.question_id;
-        var newList = [];
+        callApi({ action: "warn", id: id }, function (data) {
 
-        for (var i = 0; i < reports.length; i++) {
-            var sameReport = reports[i].id === id;
-            var sameQuestion = deletedQuestionId && reports[i].question_id === deletedQuestionId;
-
-            if (!sameReport && !sameQuestion) {
-                newList.push(reports[i]);
+            if (!data.success) {
+                showToast(data.message);
+                return;
             }
-        }
-        reports = newList;
 
-        updatePendingBadge();
-        showTable();
-        showToast("Report and question were deleted.");
+            r.status = data.status;
+
+            updatePendingBadge();
+            showTable();
+
+            showToast(r.student + " was warned (total: " + data.warning_count + ").");
+        });
+    });
+}
+
+
+// ---------- 7b. BAN / UNBAN ----------
+// action is "ban" or "unban"
+function banStudent(id, action) {
+
+    var r = findReport(id);
+    if (r === null) {
+        return;
+    }
+
+    var dialog;
+
+    if (action === "ban") {
+        dialog = {
+            label: "BAN STUDENT",
+            title: "Ban " + r.student + "?",
+            message: "They will not be able to log in anymore.\n\nYou can unban them later.",
+            confirmText: "Ban student",
+            cancelText: "Cancel",
+            tone: "danger"
+        };
+    } else {
+        dialog = {
+            label: "UNBAN STUDENT",
+            title: "Unban " + r.student + "?",
+            message: "They will be able to log in again.",
+            confirmText: "Unban student",
+            cancelText: "Cancel",
+            tone: "warn"
+        };
+    }
+
+    cmConfirm(dialog).then(function (confirmed) {
+
+        if (!confirmed) {
+            return;
+        }
+
+        callApi({ action: action, id: id }, function (data) {
+
+            if (!data.success) {
+                showToast(data.message);
+                return;
+            }
+
+            // update every report of this student
+            for (var i = 0; i < reports.length; i++) {
+                if (reports[i].student_uid === data.student_uid) {
+                    reports[i].student_status = data.user_status;
+                }
+            }
+
+            if (data.status) {
+                r.status = data.status;
+            }
+
+            updatePendingBadge();
+            showTable();
+
+            showToast(action === "ban" ? r.student + " was banned." : r.student + " was unbanned.");
+        });
     });
 }
 

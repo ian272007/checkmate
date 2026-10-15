@@ -44,6 +44,21 @@ if (!$me || strtolower(trim($me["role"] ?? "")) !== "student") {
 
 $meId = (int) $me["id"];
 
+/*
+ * "Delete conversation" is per-user: it only hides the chat (and everything
+ * up to cleared_message_id) for the user who deleted it. The other student
+ * keeps their copy. This table is created automatically.
+ */
+$conn->query(
+    "CREATE TABLE IF NOT EXISTS conversation_hidden (
+        user_id INT NOT NULL,
+        other_id INT NOT NULL,
+        cleared_message_id INT NOT NULL DEFAULT 0,
+        hidden_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, other_id)
+    ) ENGINE=InnoDB"
+);
+
 function displayName(array $user): string
 {
     $name = trim(
@@ -126,6 +141,28 @@ function partnerOf(array $collab, int $meId): int
     return (int) $collab["requester_id"] === $meId
         ? (int) $collab["receiver_id"]
         : (int) $collab["requester_id"];
+}
+
+/* cleared_message_id if this user deleted the chat with $otherId, else null */
+function clearedId(mysqli $conn, int $userId, int $otherId): ?int
+{
+    $stmt = $conn->prepare(
+        "SELECT cleared_message_id
+         FROM conversation_hidden
+         WHERE user_id = ? AND other_id = ?
+         LIMIT 1"
+    );
+
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param("ii", $userId, $otherId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row ? (int) $row["cleared_message_id"] : null;
 }
 
 $action = $_GET["action"] ?? $_POST["action"] ?? "";
@@ -250,7 +287,7 @@ if ($action === "users") {
     respond(["ok" => true, "users" => $users]);
 }
 
-/* LIST CONVERSATIONS (one per accepted partner) */
+/* LIST CONVERSATIONS (one per accepted partner, minus the ones you deleted) */
 
 if ($action === "conversations") {
     $items = [];
@@ -283,11 +320,15 @@ if ($action === "conversations") {
              LIMIT 1"
         );
 
+        /* only messages newer than what this user cleared */
         $lastStmt = $conn->prepare(
-            "SELECT message, create_at
+            "SELECT message_id, message, create_at
              FROM messages
-             WHERE (sender_id = ? AND receiver_id = ?)
-                OR (sender_id = ? AND receiver_id = ?)
+             WHERE message_id > ?
+               AND (
+                    (sender_id = ? AND receiver_id = ?)
+                    OR (sender_id = ? AND receiver_id = ?)
+               )
              ORDER BY message_id DESC
              LIMIT 1"
         );
@@ -295,7 +336,8 @@ if ($action === "conversations") {
         $unreadStmt = $conn->prepare(
             "SELECT COUNT(*) AS total
              FROM messages
-             WHERE sender_id = ? AND receiver_id = ? AND is_read = 0"
+             WHERE message_id > ?
+               AND sender_id = ? AND receiver_id = ? AND is_read = 0"
         );
 
         if (!$userStmt || !$lastStmt || !$unreadStmt) {
@@ -313,11 +355,19 @@ if ($action === "conversations") {
                 continue;
             }
 
-            $lastStmt->bind_param("iiii", $meId, $otherId, $otherId, $meId);
+            $cleared = clearedId($conn, $meId, $otherId);
+            $after = $cleared ?? 0;
+
+            $lastStmt->bind_param("iiiii", $after, $meId, $otherId, $otherId, $meId);
             $lastStmt->execute();
             $last = $lastStmt->get_result()->fetch_assoc();
 
-            $unreadStmt->bind_param("ii", $otherId, $meId);
+            /* deleted by me and nothing new since -> keep it hidden */
+            if ($cleared !== null && !$last) {
+                continue;
+            }
+
+            $unreadStmt->bind_param("iii", $after, $otherId, $meId);
             $unreadStmt->execute();
             $unread = $unreadStmt->get_result()->fetch_assoc();
 
@@ -396,6 +446,7 @@ if ($action === "messages") {
     }
 
     $partnerId = partnerOf($collab, $meId);
+    $after = clearedId($conn, $meId, $partnerId) ?? 0;
 
     $stmt = $conn->prepare(
         "UPDATE messages
@@ -417,8 +468,11 @@ if ($action === "messages") {
                 u.last_name AS sender_last_name
          FROM messages m
          JOIN users u ON u.id = m.sender_id
-         WHERE (m.sender_id = ? AND m.receiver_id = ?)
-            OR (m.sender_id = ? AND m.receiver_id = ?)
+         WHERE m.message_id > ?
+           AND (
+                (m.sender_id = ? AND m.receiver_id = ?)
+                OR (m.sender_id = ? AND m.receiver_id = ?)
+           )
          ORDER BY m.message_id ASC
          LIMIT 500"
     );
@@ -427,7 +481,7 @@ if ($action === "messages") {
         respond(["ok" => false, "error" => "Unable to load messages."], 500);
     }
 
-    $stmt->bind_param("iiii", $meId, $partnerId, $partnerId, $meId);
+    $stmt->bind_param("iiiii", $after, $meId, $partnerId, $partnerId, $meId);
     $stmt->execute();
     $result = $stmt->get_result();
     $messages = [];
@@ -509,6 +563,72 @@ if ($action === "send") {
     $stmt->close();
 
     respond(["ok" => true, "message_id" => $messageId]);
+}
+
+/* DELETE CONVERSATION (hidden for this user only) */
+
+if ($action === "delete") {
+    $collabId = filter_input(INPUT_POST, "conversation_id", FILTER_VALIDATE_INT);
+    $collab = $collabId ? openCollab($conn, $collabId, $meId) : null;
+
+    if (!$collab) {
+        respond(["ok" => false, "error" => "Conversation not found."], 404);
+    }
+
+    $partnerId = partnerOf($collab, $meId);
+
+    /* newest message id between the two students right now */
+    $stmt = $conn->prepare(
+        "SELECT COALESCE(MAX(message_id), 0) AS last_id
+         FROM messages
+         WHERE (sender_id = ? AND receiver_id = ?)
+            OR (sender_id = ? AND receiver_id = ?)"
+    );
+
+    if (!$stmt) {
+        respond(["ok" => false, "error" => "Unable to delete conversation."], 500);
+    }
+
+    $stmt->bind_param("iiii", $meId, $partnerId, $partnerId, $meId);
+    $stmt->execute();
+    $lastId = (int) ($stmt->get_result()->fetch_assoc()["last_id"] ?? 0);
+    $stmt->close();
+
+    $stmt = $conn->prepare(
+        "INSERT INTO conversation_hidden (user_id, other_id, cleared_message_id)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+             cleared_message_id = VALUES(cleared_message_id),
+             hidden_at = CURRENT_TIMESTAMP"
+    );
+
+    if (!$stmt) {
+        respond(["ok" => false, "error" => "Unable to delete conversation."], 500);
+    }
+
+    $stmt->bind_param("iii", $meId, $partnerId, $lastId);
+
+    if (!$stmt->execute()) {
+        $stmt->close();
+        respond(["ok" => false, "error" => "Unable to delete conversation."], 500);
+    }
+
+    $stmt->close();
+
+    /* clear leftover unread so the notification badge goes away too */
+    $stmt = $conn->prepare(
+        "UPDATE messages
+         SET is_read = 1
+         WHERE sender_id = ? AND receiver_id = ? AND is_read = 0"
+    );
+
+    if ($stmt) {
+        $stmt->bind_param("ii", $partnerId, $meId);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    respond(["ok" => true]);
 }
 
 respond(["ok" => false, "error" => "Unknown action."], 400);

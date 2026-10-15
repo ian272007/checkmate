@@ -28,6 +28,49 @@ $showBell        = $showBell        ?? true;
 $is = function ($key) use ($activePage) {
     return $activePage === $key ? " active" : "";
 };
+
+// ---------- name + initials of the logged-in admin ----------
+// The page may already have closed its own database connection, so this
+// file opens its own small connection just for the name.
+
+$adminName     = "Administrator";
+$adminInitials = "A";
+
+$adminId = (int) ($_SESSION["user_id"] ?? 0);
+
+if ($adminId > 0) {
+    try {
+        $shellConn = new mysqli("localhost", "root", "", "checkmate_db");
+
+        $q = $shellConn->prepare("SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1");
+        $q->bind_param("i", $adminId);
+        $q->execute();
+        $row = $q->get_result()->fetch_assoc();
+        $q->close();
+        $shellConn->close();
+
+        if ($row) {
+            $first = trim($row["first_name"] ?? "");
+            $last  = trim($row["last_name"] ?? "");
+            $full  = trim($first . " " . $last);
+
+            if ($full !== "") {
+                $adminName = $full;
+
+                // first letter of first name + first letter of last name
+                $adminInitials = mb_substr($first !== "" ? $first : $last, 0, 1, "UTF-8");
+
+                if ($first !== "" && $last !== "") {
+                    $adminInitials .= mb_substr($last, 0, 1, "UTF-8");
+                }
+
+                $adminInitials = mb_strtoupper($adminInitials, "UTF-8");
+            }
+        }
+    } catch (Throwable $e) {
+        // if anything fails, keep the default "Administrator" / "A"
+    }
+}
 ?>
 
 <!-- =========================================
@@ -101,11 +144,11 @@ $is = function ($key) use ($activePage) {
     <!-- ADMIN PROFILE (bottom of sidebar) -->
     <div class="sidebar-user">
 
-        <div class="user-avatar">A</div>
+        <div class="user-avatar"><?= htmlspecialchars($adminInitials, ENT_QUOTES, "UTF-8") ?></div>
 
         <div class="user-information">
-            <strong>Administrator</strong>
-            <span>CHECKMATE Admin</span>
+            <strong><?= htmlspecialchars($adminName, ENT_QUOTES, "UTF-8") ?></strong>
+            <span>Admin</span>
         </div>
 
         <button
@@ -178,8 +221,7 @@ $is = function ($key) use ($activePage) {
 
                 <!-- Notifications (the number is the pending reports) -->
                 <button type="button" class="notification" id="notificationButton" aria-label="Notifications">
-
-                    ♧
+ 
 
                     <span class="notification-count" id="notificationCount"<?= $sidebarPending > 0 ? "" : ' style="display:none"' ?>><?= $sidebarPending ?></span>
 

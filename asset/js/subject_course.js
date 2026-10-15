@@ -26,7 +26,6 @@ var addButton = document.getElementById("addButton");
 var formModal = document.getElementById("formModal");
 var formError = document.getElementById("formError");
 var formName = document.getElementById("formName");
-var formStatus = document.getElementById("formStatus");
 var saveButton = document.getElementById("saveForm");
 
 
@@ -147,18 +146,18 @@ function buildPagination(total) {
 function updateStats() {
 
     var active = 0;
-    var inactive = 0;
+    var archived = 0;
     var all = courses.concat(subjects);
 
     for (var i = 0; i < all.length; i++) {
         if (all[i].status === "Active") { active++; }
-        else { inactive++; }
+        else if (all[i].status === "Archived") { archived++; }
     }
 
     document.getElementById("statCourses").textContent = courses.length;
     document.getElementById("statSubjects").textContent = subjects.length;
     document.getElementById("statActive").textContent = active;
-    document.getElementById("statInactive").textContent = inactive;
+    document.getElementById("statArchived").textContent = archived;
 }
 
 
@@ -202,14 +201,21 @@ function showTable() {
         var r = result[j];
         var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        html += "<tr>";
+        // archived rows look a little faded
+        html += "<tr" + ((r.status === "Archived") ? " class='is-archived'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.name) + "</td>";
         html += "<td class='cell-muted'>" + r.used + "</td>";
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
         html += "<td>";
-        html += "<button class='action-btn' onclick='openForm(" + r.id + ")'>Edit</button>";
-        html += "<button class='action-btn delete' onclick='deleteItem(" + r.id + ")'>Delete</button>";
+
+        // Active -> Archive button.  Archived -> Restore button.
+        if (r.status === "Archived") {
+            html += "<button class='action-btn restore' onclick='changeItem(" + r.id + ", \"restore\")'>Restore</button>";
+        } else {
+            html += "<button class='action-btn archive' onclick='changeItem(" + r.id + ", \"archive\")'>Archive</button>";
+        }
+
         html += "</td>";
         html += "</tr>";
     }
@@ -278,7 +284,7 @@ for (var s = 0; s < statCards.length; s++) {
         if (jump === "courses" || jump === "subjects") {
             setTab(jump);
         } else {
-            // Active / Inactive: filter the table that is open
+            // Active / Archived: filter the table that is open
             statusFilter.value = jump;
             currentPage = 1;
             showTable();
@@ -287,8 +293,10 @@ for (var s = 0; s < statCards.length; s++) {
 }
 
 
-// ---------- 8. DELETE ----------
-function deleteItem(id) {
+// ---------- 8. ARCHIVE / RESTORE ----------
+// action is "archive" or "restore"
+// asks first with the styled dialog from cm_confirm.js
+function changeItem(id, action) {
 
     var item = findItem(id);
     if (item === null) {
@@ -296,47 +304,69 @@ function deleteItem(id) {
     }
 
     var word = itemWord();
-    var message = "Delete " + word + " " + formatId(item.id) + "?\n\n" + item.name;
+    var dialog;
 
-    if (item.used > 0) {
-        message += "\n\n" + item.used + " question(s) already use this " + word + ". " +
-                   "They will keep the name, but it will no longer be in the list.\n" +
-                   "Tip: set it to Inactive instead if you only want to hide it.";
+    if (action === "archive") {
+
+        var archiveMessage = item.name;
+
+        if (item.used > 0) {
+            archiveMessage += "\n\n" + item.used + " question(s) already use this " + word + ".";
+        }
+
+        archiveMessage += "\n\nIt will no longer be available to students. You can restore it later.";
+
+        dialog = {
+            label: "ARCHIVE " + word.toUpperCase(),
+            title: "Archive " + word + " " + formatId(item.id) + "?",
+            message: archiveMessage,
+            confirmText: "Archive " + word,
+            cancelText: "Cancel",
+            tone: "warn"
+        };
+
+    } else {
+
+        dialog = {
+            label: "RESTORE " + word.toUpperCase(),
+            title: "Restore " + word + " " + formatId(item.id) + "?",
+            message: item.name + "\n\nIt will be available to students again.",
+            confirmText: "Restore " + word,
+            cancelText: "Cancel",
+            tone: "warn"
+        };
     }
 
-    if (confirm(message) === false) {
-        return;
-    }
+    cmConfirm(dialog).then(function (confirmed) {
 
-    callApi({ action: "delete", type: word, id: id }, function (data) {
-
-        if (!data.success) {
-            showToast(data.message);
+        if (!confirmed) {
             return;
         }
 
-        var list = currentList();
-        var newList = [];
-        for (var i = 0; i < list.length; i++) {
-            if (list[i].id !== id) {
-                newList.push(list[i]);
+        callApi({ action: action, type: word, id: id }, function (data) {
+
+            if (!data.success) {
+                showToast(data.message);
+                return;
             }
-        }
 
-        if (currentTab === "courses") {
-            courses = newList;
-        } else {
-            subjects = newList;
-        }
+            // update the list on the page too
+            item.status = data.status;
 
-        updateStats();
-        showTable();
-        showToast(capital(word) + " " + formatId(id) + " was deleted.");
+            updateStats();
+            showTable();
+
+            if (action === "archive") {
+                showToast(capital(word) + " " + formatId(id) + " was archived.");
+            } else {
+                showToast(capital(word) + " " + formatId(id) + " was restored.");
+            }
+        });
     });
 }
 
 
-// ---------- 9. ADD / EDIT POPUP ----------
+// ---------- 9. ADD POPUP ----------
 // openForm() with no id = add new, openForm(id) = edit that one
 function openForm(id) {
 
@@ -353,13 +383,11 @@ function openForm(id) {
         document.getElementById("modalTitle").textContent = "Add " + word;
         saveButton.textContent = "Add " + capital(word);
         formName.value = "";
-        formStatus.value = "Active";
     } else {
         var item = findItem(editingId);
         document.getElementById("modalTitle").textContent = "Edit " + word;
         saveButton.textContent = "Save Changes";
         formName.value = item.name;
-        formStatus.value = item.status;
     }
 
     formModal.classList.add("show");
@@ -385,14 +413,13 @@ saveButton.addEventListener("click", function () {
 
     var word = itemWord();
     var name = formName.value.trim();
-    var status = formStatus.value;
-
     if (name === "") {
         formError.textContent = "Please enter the " + word + " name.";
         return;
     }
 
-    var params = { type: word, name: name, status: status };
+    // new items are always Active
+    var params = { type: word, name: name, status: "Active" };
 
     if (editingId === null) {
         params.action = "add";

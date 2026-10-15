@@ -37,6 +37,10 @@ if (!$user) {
 
 $user_id = (int)$user["id"];
 
+/* NOTE: warnings are no longer handled here.
+   The warning popup is shown live by asset/js/notify.js
+   (it asks warnings_api.php?action=check every few seconds). */
+
 function e($value): string
 {
     return htmlspecialchars(
@@ -87,6 +91,36 @@ function timeAgo($seconds): string
 
     return floor($days / 30) . " mo ago";
 }
+
+/* Same security token the Questions page uses
+   (question_post_api.php checks it before saving a question) */
+if (empty($_SESSION["questions_csrf"])) {
+    $_SESSION["questions_csrf"] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION["questions_csrf"];
+
+/* Dropdown choices for the Ask a Question box */
+function loadOptions(mysqli $conn, string $table, string $column): array
+{
+    $result = $conn->query(
+        "SELECT `$column` AS option_name FROM `$table`
+         WHERE status = 'Active' ORDER BY `$column` ASC"
+    );
+
+    $options = [];
+
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $options[] = $row["option_name"];
+        }
+    }
+
+    return $options;
+}
+
+$subjects = loadOptions($conn, "question_subjects", "subject_name");
+$courses  = loadOptions($conn, "question_courses", "course_name");
+$types    = loadOptions($conn, "question_types", "type_name");
 
 $firstInitial = substr(
     trim($user["first_name"] ?? ""),
@@ -206,6 +240,12 @@ try {
         href="../../asset/css/student_home.css"
     >
 
+    <!-- Styles for the subject / course / type / attachment row -->
+    <link
+        rel="stylesheet"
+        href="../../asset/css/student_home_ask.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student_home_ask.css') ?>"
+    >
+
     <!-- Force CHECKMATE link styling -->
     <style>
         a.new-question-button,
@@ -234,11 +274,6 @@ try {
         /* keep the arrow box from shrinking inside the question row */
         .question-item .open-button {
             flex-shrink: 0;
-        }
-
-        /* Make a Move button stays on the right now that the option buttons are gone */
-        .ask-bottom {
-            justify-content: flex-end;
         }
     </style>
 
@@ -376,7 +411,7 @@ try {
         </section>
 
         <!-- QUICK QUESTION BOX -->
-        <section class="ask-box">
+        <section class="ask-box" id="askBox">
 
             <div class="ask-box-top">
 
@@ -398,17 +433,90 @@ try {
 
             </div>
 
-            <!-- Shortcut to questions.php -->
-            <div id="questionForm">
+            <!-- Post a question straight from Home -->
+            <div id="questionForm" data-csrf="<?= e($csrf) ?>">
 
                 <textarea
                     id="questionInput"
                     class="question-input"
                     placeholder="What would you like to ask?"
                     aria-label="Write a question"
+                    maxlength="5000"
                 ></textarea>
 
+                <!-- SUBJECT / COURSE / QUESTION TYPE -->
+                <div class="ask-fields">
+
+                    <select id="askSubject" aria-label="Subject" required>
+                        <option value="">Subject</option>
+                        <?php foreach ($subjects as $option): ?>
+                            <option value="<?= e($option) ?>"><?= e($option) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select id="askCourse" aria-label="Course" required>
+                        <option value="">Course</option>
+                        <?php foreach ($courses as $option): ?>
+                            <option value="<?= e($option) ?>"><?= e($option) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select id="askType" aria-label="Question type" required>
+                        <option value="">Question Type</option>
+                        <?php foreach ($types as $option): ?>
+                            <option value="<?= e($option) ?>"><?= e($option) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                </div>
+
+                <!-- message shown when something is missing or went wrong -->
+                <div class="ask-message" id="askMessage" role="alert" hidden></div>
+
                 <div class="ask-bottom">
+
+                    <!-- ATTACHMENT -->
+                    <div class="ask-attach">
+
+                        <button
+                            type="button"
+                            class="attach-plus"
+                            id="attachPlus"
+                            aria-label="Add attachment"
+                            aria-haspopup="true"
+                            aria-expanded="false"
+                        >+</button>
+
+                        <div class="attach-menu" id="attachMenu" hidden>
+                            <button type="button" class="attach-option" data-attachment="photos">
+                                <span class="attach-option-icon">▧</span>
+                                <span>Photos</span>
+                            </button>
+
+                            <button type="button" class="attach-option" data-attachment="files">
+                                <span class="attach-option-icon">▤</span>
+                                <span>Files</span>
+                            </button>
+                        </div>
+
+                        <span class="attach-name" id="attachName">Add attachment (optional)</span>
+
+                        <button
+                            type="button"
+                            class="attach-clear"
+                            id="attachClear"
+                            aria-label="Remove attachment"
+                            hidden
+                        >✕</button>
+
+                        <input
+                            type="file"
+                            id="attachInput"
+                            accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.xls,.xlsx,.csv"
+                            hidden
+                        >
+
+                    </div>
 
                     <!-- MAKE A MOVE -->
                     <button
@@ -416,7 +524,7 @@ try {
                         class="ask-button"
                         id="askButton"
                     >
-                        Make a Move
+                        <span class="ask-button-label" id="askButtonLabel">Make a Move</span>
                         <span>→</span>
                     </button>
 
@@ -723,20 +831,7 @@ try {
     ></script>
 
     <!-- CHECKMATE JAVASCRIPT -->
-    <script src="../../asset/js/student_home.js"></script>
-
-    <!-- MAKE A MOVE SHORTCUT -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const askButton = document.getElementById("askButton");
-
-            if (askButton) {
-                askButton.addEventListener("click", function () {
-                    window.location.href = "questions.php";
-                });
-            }
-        });
-    </script>
+    <script src="../../asset/js/student_home.js?v=<?= filemtime(__DIR__ . '/../../asset/js/student_home.js') ?>"></script>
 
 </body>
 

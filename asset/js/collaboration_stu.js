@@ -4,6 +4,7 @@
    - expand / collapse details
    - Find a peer: search students, send and cancel requests
    - Accept / Reject / Cancel without reloading the page
+   - styled confirm dialog (cm_confirm.js) instead of the browser's confirm()
    - live refresh for BOTH students (checks every 2 seconds)
    - clears the sidebar notification badge while this page is open
    ========================================================= */
@@ -66,6 +67,16 @@
         flashTimer = setTimeout(() => {
             flashBox.hidden = true;
         }, 4000);
+    }
+
+    /* Styled confirm dialog (cm_confirm.js). Falls back to the browser's
+       confirm() only if that script failed to load. */
+    function askConfirm(options) {
+        if (typeof window.cmConfirm === "function") {
+            return window.cmConfirm(options);
+        }
+
+        return Promise.resolve(window.confirm(options.message));
     }
 
     /* POST helper: always asks for JSON back */
@@ -210,7 +221,17 @@
 
             const question = form.dataset.confirm;
 
-            if (question && !window.confirm(question)) return;
+            if (question) {
+                const ok = await askConfirm({
+                    title: form.dataset.confirmTitle || "Are you sure?",
+                    message: question,
+                    confirmText: form.dataset.confirmText || "Confirm",
+                    cancelText: form.dataset.confirmCancel || "Cancel",
+                    tone: form.dataset.confirmTone || "warn"
+                });
+
+                if (!ok) return;
+            }
 
             const buttons = form
                 .closest(".collab-actions")
@@ -515,6 +536,16 @@
 
             /* ----- Cancel request ----- */
             if (cancelButton) {
+                const ok = await askConfirm({
+                    title: "Cancel request?",
+                    message: "Cancel this collaboration request?",
+                    confirmText: "Yes, cancel",
+                    cancelText: "Keep it",
+                    tone: "danger"
+                });
+
+                if (!ok) return;
+
                 cancelButton.disabled = true;
                 cancelButton.textContent = "Cancelling...";
 

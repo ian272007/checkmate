@@ -172,7 +172,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && $getAction === "search") {
                     OR u.course LIKE ?
                )
              ORDER BY u.first_name, u.last_name
-             LIMIT 20"
+             LIMIT 100"
         );
 
         if (!$stmt) {
@@ -599,6 +599,8 @@ $updated = $_GET["updated"] ?? "";
     <link rel="stylesheet" href="../../asset/css/collaboration_stu.css">
     <link rel="stylesheet"
           href="../../asset/css/collaboration_find.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/collaboration_find.css') ?>">
+    <link rel="stylesheet"
+          href="../../asset/css/cm_confirm.css?v=<?= (int) @filemtime(__DIR__ . '/../../asset/css/cm_confirm.css') ?>">
 </head>
 <body>
 
@@ -759,15 +761,15 @@ $updated = $_GET["updated"] ?? "";
                         <?php endforeach; ?>
                     </select>
 
-                    <label class="find-label" for="findSearch">
-                        2. FIND A STUDENT
-                    </label>
-
+                    <!-- Search bar hidden: the JS still needs this input to load the student list -->
                     <input type="text"
                            id="findSearch"
                            class="find-input"
                            placeholder="Search by name, student ID or course..."
-                           autocomplete="off">
+                           autocomplete="off"
+                           style="display: none;"
+                           tabindex="-1"
+                           aria-hidden="true">
 
                     <div id="findAlert" class="find-alert" role="alert" hidden></div>
 
@@ -901,7 +903,11 @@ $updated = $_GET["updated"] ?? "";
                                                 </form>
 
                                                 <form method="POST" class="collab-form"
-                                                      data-confirm="Reject this collaboration request?">
+                                                      data-confirm="Reject this collaboration request?"
+                                                      data-confirm-title="Reject request?"
+                                                      data-confirm-text="Yes, reject"
+                                                      data-confirm-cancel="Keep it"
+                                                      data-confirm-tone="danger">
                                                     <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
                                                     <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
                                                     <input type="hidden" name="action" value="reject">
@@ -913,7 +919,11 @@ $updated = $_GET["updated"] ?? "";
                                             <?php else: ?>
 
                                                 <form method="POST" class="collab-form"
-                                                      data-confirm="Cancel this collaboration request?">
+                                                      data-confirm="Cancel this collaboration request?"
+                                                      data-confirm-title="Cancel request?"
+                                                      data-confirm-text="Yes, cancel"
+                                                      data-confirm-cancel="Keep it"
+                                                      data-confirm-tone="danger">
                                                     <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
                                                     <input type="hidden" name="collaboration_id" value="<?= $cid ?>">
                                                     <input type="hidden" name="action" value="cancel">
@@ -1027,6 +1037,7 @@ $updated = $_GET["updated"] ?? "";
     };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../asset/js/cm_confirm.js?v=<?= (int) @filemtime(__DIR__ . '/../../asset/js/cm_confirm.js') ?>"></script>
 <script src="../../asset/js/collaboration_stu.js?v=<?= (int) @filemtime(__DIR__ . '/../../asset/js/collaboration_stu.js') ?>"></script>
 </body>
 </html>

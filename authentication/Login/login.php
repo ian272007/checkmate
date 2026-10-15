@@ -5,13 +5,36 @@ session_start();
 
 include "../../config/config.php";
 
-$message = "";
+// error messages shown under each box (empty = no error)
+$id_error       = "";
+$password_error = "";
+
+$username     = "";
 $account_type = "student";
+
+// Messages saved by the last failed login. They are shown ONE time only,
+// so when the page is refreshed they are gone.
+if (isset($_SESSION["login_flash"])) {
+
+    $flash = $_SESSION["login_flash"];
+
+    unset($_SESSION["login_flash"]);
+
+    $id_error       = $flash["id_error"]       ?? "";
+    $password_error = $flash["password_error"] ?? "";
+    $username       = $flash["username"]       ?? "";
+    $account_type   = $flash["account_type"]   ?? "student";
+}
+
+// student was kicked out because the account was banned
+if (($_GET["banned"] ?? "") === "1" && $id_error === "") {
+    $id_error = "Your account has been banned. Please contact the administrator.";
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Get form values
-    $username = $_POST["student_id"] ?? "";
+    $username = trim($_POST["student_id"] ?? "");
     $password = $_POST["password"] ?? "";
 
     // Get selected account type
@@ -38,34 +61,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Get the role from database
         $user_role = strtolower(trim($user["role"]));
 
-        // Check password
-        if (password_verify($password, $user["password"])) {
+        // Check password.
+        // Normal accounts have a hash. Some old accounts (admin1, admin2, admin3)
+        // still have plain text, so we accept those once and upgrade them to a hash.
+        $stored = $user["password"];
+
+        if (password_get_info($stored)["algoName"] !== "unknown") {
+
+            $password_ok = password_verify($password, $stored);
+
+        } else {
+
+            $password_ok = hash_equals($stored, $password);
+
+            if ($password_ok) {
+                $new_hash = password_hash($password, PASSWORD_DEFAULT);
+                $upgrade = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $upgrade->bind_param("si", $new_hash, $user["id"]);
+                $upgrade->execute();
+                $upgrade->close();
+            }
+        }
+
+        if ($password_ok) {
 
             // Check if selected account type matches database role
             if ($user_role != $account_type) {
 
-                $message = "This account is not a " . $account_type . " account.";
+                // shown under the Student ID box
+                $id_error = "This account is not a " . $account_type . " account.";
+
+            } elseif (($user["status"] ?? "Active") === "Banned") {
+
+                // shown under the Student ID box
+                $id_error = "Your account has been banned. Please contact the administrator.";
 
             } else {
 
-              // Save user information in session
-$_SESSION["user_id"] = $user["id"];
-$_SESSION["student_id"] = $user["student_id"];
-$_SESSION["role"] = $user_role;
+                // Save user information in session
+                $_SESSION["user_id"]    = $user["id"];
+                $_SESSION["student_id"] = $user["student_id"];
+                $_SESSION["role"]       = $user_role;
 
-// Get full name from database
-$full_name = trim($user["full_name"]);
+                // The table has first_name and last_name (there is no full_name column)
+                $_SESSION["firstname"] = trim($user["first_name"] ?? "");
+                $_SESSION["lastname"]  = trim($user["last_name"] ?? "");
 
-// Split full name into first and last name
-$name_parts = preg_split('/\s+/', $full_name);
-
-$_SESSION["firstname"] = $name_parts[0] ?? "";
-
-if (count($name_parts) > 1) {
-    $_SESSION["lastname"] = implode(" ", array_slice($name_parts, 1));
-} else {
-    $_SESSION["lastname"] = "";
-}
                 // Redirect based on role
                 if ($user_role == "admin") {
 
@@ -82,17 +123,37 @@ if (count($name_parts) > 1) {
 
         } else {
 
-            $message = "Incorrect password.";
+            // shown under the Password box
+            $password_error = "Incorrect password.";
 
         }
 
     } else {
 
-        $message = "Student ID not found.";
+        // The Student ID does not exist. Show the red message under the
+        // Student ID box only. (The password is checked once the ID is correct.)
+        $id_error = "Incorrect Student ID.";
 
     }
 
     $stmt->close();
+
+    // Login failed: save the messages and reload the page with a normal GET request.
+    // This way, refreshing the page does not re-send the form and the red messages disappear.
+    if ($id_error !== "" || $password_error !== "") {
+
+        $_SESSION["login_flash"] = [
+            "id_error"       => $id_error,
+            "password_error" => $password_error,
+            "username"       => $username,
+            "account_type"   => $account_type
+        ];
+
+        $conn->close();
+
+        header("Location: login.php");
+        exit();
+    }
 }
 
 $conn->close();
@@ -247,6 +308,10 @@ $conn->close();
                         Enter your account details to continue.
                     </p>
 
+                    <?php if (($_GET['reset'] ?? '') === 'success'): ?>
+                        <p style="color:#6fbf8b;margin-top:10px">Password updated. Please sign in.</p>
+                    <?php endif; ?>
+
                 </div>
 
 
@@ -309,14 +374,14 @@ $conn->close();
                      LOGIN FORM
                 ================================== -->
 
-                <form id="loginForm" method="post" action="login.php">
+                <form id="loginForm" method="post" action="login.php" novalidate>
 
                     <!-- Hidden input: JavaScript updates this when the user clicks Student or Admin -->
                     <input
                         type="hidden"
                         id="accountType"
                         name="account_type"
-                        value="<?php echo $account_type; ?>"
+                        value="<?php echo htmlspecialchars($account_type); ?>"
                     >
 
 
@@ -334,7 +399,17 @@ $conn->close();
                             name="student_id"
                             placeholder="Enter your Student ID"
                             autocomplete="student_id"
+                            value="<?php echo htmlspecialchars($username); ?>"
+                            class="<?php echo $id_error !== '' ? 'input-error' : ''; ?>"
                         >
+
+                        <!-- red message under the Student ID box -->
+                        <p
+                            class="field-error <?php echo $id_error !== '' ? 'show' : ''; ?>"
+                            id="idError"
+                            role="alert">
+                            <?php echo htmlspecialchars($id_error); ?>
+                        </p>
 
                     </div>
 
@@ -350,10 +425,7 @@ $conn->close();
                             </label>
 
 
-                            <a href="#" id="forgotPassword">
-                                Forgot password?
-                            </a>
-
+                            <a href="forgot_password.php">Forgot password?</a>
                         </div>
 
 
@@ -365,6 +437,7 @@ $conn->close();
                                 name="password"
                                 placeholder="Enter your password"
                                 autocomplete="current-password"
+                                class="<?php echo $password_error !== '' ? 'input-error' : ''; ?>"
                             >
 
 
@@ -421,6 +494,14 @@ $conn->close();
                             </button>
 
                         </div>
+
+                        <!-- red message under the Password box -->
+                        <p
+                            class="field-error <?php echo $password_error !== '' ? 'show' : ''; ?>"
+                            id="passwordError"
+                            role="alert">
+                            <?php echo htmlspecialchars($password_error); ?>
+                        </p>
 
                     </div>
 
@@ -482,9 +563,7 @@ $conn->close();
                         Don't have an account?
                     </span>
 
-                    <a href="" id="registerLink">
-                       <a href="/checkmate/authentication/register.php?"> Create an account</a>
-                    </a>
+                    <a href="/checkmate/authentication/register.php" id="registerLink">Create an account</a>
 
                 </div>
 
@@ -525,11 +604,10 @@ $conn->close();
 
 
     <!-- =========================================
-         TOAST MESSAGE
+         TOAST MESSAGE (small notes like "Admin account selected")
     ========================================== -->
 
-    <!-- data-message holds the error from PHP (empty if no error). login.js shows it. -->
-    <div id="toast" class="toast" data-message="<?php echo htmlspecialchars($message); ?>"></div>
+    <div id="toast" class="toast"></div>
 
 
 

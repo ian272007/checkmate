@@ -13,7 +13,7 @@ if (!isset($_SESSION["role"]) || $_SESSION["role"] !== "admin") {
     exit;
 }
 
-// token used to protect status changes and delete
+// token used to protect status changes and archive/restore
 if (empty($_SESSION["csrf"])) {
     $_SESSION["csrf"] = bin2hex(random_bytes(32));
 }
@@ -46,6 +46,8 @@ function e($text) {
 
     <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
     <link rel="stylesheet" href="../../asset/css/report.css?v=<?= filemtime(__DIR__ . '/../../asset/css/report.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/report_warn.css?v=<?= filemtime(__DIR__ . '/../../asset/css/report_warn.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/cm_confirm.css?v=<?= filemtime(__DIR__ . '/../../asset/css/cm_confirm.css') ?>">
 </head>
 
 <body>
@@ -87,6 +89,7 @@ require __DIR__ . "/partials/admin_shell.php";
                     <option value="Review">Review</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Archived">Archived</option>
                 </select>
 
                 <button class="btn-gold" id="exportButton">⇩ Export</button>
@@ -175,6 +178,7 @@ require __DIR__ . "/partials/admin_shell.php";
 
             <div class="detail-label">Reporter's details</div>
             <div class="detail-box" id="viewDetails"></div>
+            <div id="viewReportImage"></div>
 
             <div class="form-group">
                 <label for="viewStatus">Status</label>
@@ -183,6 +187,7 @@ require __DIR__ . "/partials/admin_shell.php";
                     <option value="Review">Review</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Archived">Archived</option>
                 </select>
             </div>
 
@@ -205,6 +210,8 @@ require __DIR__ . "/partials/admin_shell.php";
         var uploadUrl = <?= json_encode($uploadUrl) ?>;
     </script>
 
+    <!-- styled confirm dialog (must load BEFORE report.js) -->
+    <script src="../../asset/js/cm_confirm.js?v=<?= filemtime(__DIR__ . '/../../asset/js/cm_confirm.js') ?>"></script>
     <script src="../../asset/js/report.js?v=<?= filemtime(__DIR__ . '/../../asset/js/report.js') ?>"></script>
 
 </body>

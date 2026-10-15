@@ -13,6 +13,20 @@ function getCards() {
 }
 
 
+/* Text used by the search box.
+   The Edit/Delete buttons are left out so searching "edit" doesn't match every card. */
+
+function searchText(card) {
+    const clone = card.cloneNode(true);
+
+    clone.querySelectorAll(".mq-menu").forEach(function (el) {
+        el.remove();
+    });
+
+    return clone.textContent.toLowerCase();
+}
+
+
 /* Show or hide questions based on the tab and the search box */
 
 function applyFilters() {
@@ -28,7 +42,7 @@ function applyFilters() {
             activeFilter === "all" || card.dataset.status === activeFilter;
 
         const matchesSearch =
-            term === "" || card.textContent.toLowerCase().includes(term);
+            term === "" || searchText(card).includes(term);
 
         const show = matchesTab && matchesSearch;
 

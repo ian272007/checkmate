@@ -154,17 +154,43 @@
       color: var(--text);
     }
  
-    /* the little eye button for showing the password */
+    /* ---------- eye button (show / hide password) ---------- */
     .eye-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      margin-right: -4px;
+      padding: 0;
       background: none;
       border: none;
-      padding: 0;
+      border-radius: 4px;
+      color: #a9b3bc;            /* visible gray (not dark anymore) */
       cursor: pointer;
-      display: flex;
+      transition: color 0.2s;
     }
- 
-    .eye-btn:hover svg {
-      stroke: var(--gold);
+
+    /* overrides the small 14px icon rule from .input-box svg */
+    .eye-btn svg,
+    .input-box .eye-btn svg {
+      display: block;
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    /* yellow (theme gold) on hover / keyboard focus */
+    .eye-btn:hover,
+    .eye-btn:focus-visible {
+      color: var(--gold);
+      outline: none;
     }
  
     /* ---------- checkbox ---------- */
@@ -296,3 +322,73 @@
         padding: 24px 20px;
       }
     }
+  
+/* ================= OTP STEP ================= */
+
+.hidden {
+  display: none !important;
+}
+
+.otp-subtitle {
+  max-width: 320px;
+}
+
+.otp-subtitle strong {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.otp-box {
+  height: 52px;
+  justify-content: center;
+}
+
+.otp-box input {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 12px;
+  padding-left: 12px; /* balances the trailing letter-spacing */
+}
+
+.otp-timer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+}
+
+.success {
+  color: #6cc08b;
+  font-size: 11px;
+  text-align: center;
+  min-height: 14px;
+  margin: 4px 0 10px;
+}
+
+.create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.link-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link-btn:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}

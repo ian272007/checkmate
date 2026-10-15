@@ -10,6 +10,12 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != "admin") {
 // connect to the database (gives us the $conn variable)
 require_once "../../config/config.php";
 
+// token (kept in case other code on this page still uses it)
+if (empty($_SESSION["csrf"])) {
+    $_SESSION["csrf"] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION["csrf"];
+
 
 /* =========================================
    SMALL HELPER FUNCTIONS
@@ -41,7 +47,7 @@ function getCount($conn, $sql)
    ========================================= */
 
 // role = 'student' means admins are never listed on this page
-$sql = "SELECT id, first_name, last_name, student_id, email, course, year_level
+$sql = "SELECT id, first_name, last_name, student_id, email, course, year_level, status
         FROM users
         WHERE role = 'student'
         ORDER BY id ASC";
@@ -89,10 +95,9 @@ $conn->close();
 
     <title>CHECKMATE - Students</title>
 
-    <!-- filemtime() is the time the file was last saved, so the link changes whenever you edit the file
-         (this stops the browser from showing an old cached copy) -->
     <link rel="stylesheet" href="../../asset/css/admin_layout.css?v=<?= filemtime(__DIR__ . '/../../asset/css/admin_layout.css') ?>">
     <link rel="stylesheet" href="../../asset/css/student.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student.css') ?>">
+    <link rel="stylesheet" href="../../asset/css/student_ban.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student_ban.css') ?>">
 </head>
 
 <body>
@@ -111,7 +116,7 @@ require __DIR__ . "/partials/admin_shell.php";
         <!-- PAGE CONTENT -->
         <section class="content">
 
-            <!-- Search and filters -->
+            <!-- Search, filters and export button -->
             <div class="toolbar">
 
                 <div class="search-box">
@@ -135,6 +140,14 @@ require __DIR__ . "/partials/admin_shell.php";
                     <option value="3rd Year">3rd Year</option>
                     <option value="4th Year">4th Year</option>
                 </select>
+
+                <select id="statusFilter" class="filter-select">
+                    <option value="all">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Banned">Banned</option>
+                </select>
+
+                <button class="btn-gold" id="exportButton">⇩ Export</button>
 
             </div>
 
@@ -171,15 +184,21 @@ require __DIR__ . "/partials/admin_shell.php";
                                 <?php
                                 // join first and last name (some students have no last name)
                                 $full_name = trim($s["first_name"] . " " . $s["last_name"]);
+
+                                // anything that is not exactly "Banned" counts as Active
+                                $is_banned = ($s["status"] === "Banned");
+                                $status    = $is_banned ? "Banned" : "Active";
                                 ?>
 
                                 <!-- the data-* attributes are what the JavaScript uses to filter -->
-                                <tr class="student-row"
+                                <tr class="student-row<?= $is_banned ? ' is-banned' : '' ?>"
+                                    data-id="<?= (int)$s["id"] ?>"
                                     data-name="<?= e($full_name) ?>"
                                     data-studentid="<?= e($s["student_id"]) ?>"
                                     data-email="<?= e($s["email"]) ?>"
                                     data-course="<?= e($s["course"]) ?>"
-                                    data-year="<?= e($s["year_level"]) ?>">
+                                    data-year="<?= e($s["year_level"]) ?>"
+                                    data-status="<?= $status ?>">
 
                                     <td><span class="cell-id"><?= (int)$s["id"] ?></span></td>
                                     <td><?= e($full_name) ?></td>
@@ -226,10 +245,10 @@ require __DIR__ . "/partials/admin_shell.php";
     <!-- TOAST MESSAGE -->
     <div class="toast" id="toast"></div>
 
+    <script>
+        var csrfToken = <?= json_encode($csrf) ?>;
+    </script>
 
-    <!-- =========================================
-         JAVASCRIPT
-         ========================================= -->
     <script src="../../asset/js/student.js?v=<?= filemtime(__DIR__ . '/../../asset/js/student.js') ?>"></script>
 
 </body>

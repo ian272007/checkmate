@@ -1013,3 +1013,69 @@ body {
     }
 
 }
+
+/* =========================================
+   FIELD ERRORS (red message under a box)
+   Idagdag sa pinakadulo ng login.css
+========================================= */
+
+.field-error {
+    display: none;
+
+    margin-top: 8px;
+
+    color: #ef5350;
+
+    font-size: 0.78rem;
+
+    line-height: 1.4;
+}
+
+
+.field-error.show {
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    animation: errorAppear 0.2s ease;
+}
+
+
+/* small warning sign before the message */
+.field-error.show::before {
+    content: "\26A0";
+
+    font-size: 0.85rem;
+}
+
+
+/* red border on the box with the problem */
+.form-group input.input-error,
+.form-group input.input-error:focus {
+    border-color: #ef5350;
+
+    box-shadow: 0 0 0 2px rgba(239, 83, 80, 0.12);
+}
+
+
+@keyframes errorAppear {
+
+    from {
+        opacity: 0;
+
+        transform: translateY(-3px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform: translateY(0);
+    }
+
+}
+
+.login-btn {
+    border-radius: 10px;
+}

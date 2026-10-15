@@ -2,9 +2,12 @@
    - new messages: badge on "Messages", toast, sound
    - new answers to your questions: badge on "My Questions", toast, sound
    - new collaboration requests / accepted requests: badge on "Collaboration", toast, sound
+   - warnings from an admin: full-screen popup, shown live while the student is online
+     (instant through Server-Sent Events, with polling as a backup)
    - total unread count in the browser tab title
-   Needs: messages_api.php (action=unread) and notifications_api.php
-   (action=answers, action=collab) in view/student/ */
+   Needs: messages_api.php (action=unread), notifications_api.php
+   (action=answers, action=collab), warnings_api.php (action=check)
+   and warnings_stream.php in view/student/ */
 
 (() => {
     "use strict";
@@ -14,6 +17,8 @@
 
     const MESSAGES_URL = "messages_api.php";
     const ANSWERS_URL = "notifications_api.php";
+    const WARNINGS_URL = "warnings_api.php";
+    const WARNINGS_STREAM_URL = "warnings_stream.php";
     const POLL_MS = 4000;
     const BASE_TITLE = document.title;
 
@@ -21,6 +26,7 @@
     let unreadMessages = 0;
     let unseenAnswers = 0;
     let unseenCollab = 0;
+    let warningOpen = false;
 
     /* ---------- styles (injected, so no CSS file needs editing) ---------- */
 
@@ -161,6 +167,133 @@
         @keyframes cmToastBar {
             from { transform: scaleX(1); }
             to   { transform: scaleX(0); }
+        }
+
+        /* ---------- warning popup (yellow = caution) ---------- */
+        #cmWarn {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(4, 6, 8, .82);
+            font-family: Arial, Helvetica, sans-serif;
+            animation: cmWarnFade .25s ease;
+        }
+        #cmWarn .cmw-card {
+            width: 100%;
+            max-width: 440px;
+            overflow: hidden;
+            background: #11161a;
+            border: 1px solid #292f34;
+            border-radius: 6px;
+            box-shadow: 0 0 0 1px rgba(245, 197, 66, .18), 0 24px 70px rgba(0, 0, 0, .75), 0 0 60px rgba(214, 158, 20, .28);
+            text-align: center;
+            animation: cmWarnIn .35s cubic-bezier(.2, .9, .3, 1.2);
+        }
+        /* single solid line along the top of the card, in warning yellow */
+        #cmWarn .cmw-strip {
+            height: 4px;
+            background: #f5c542;
+        }
+        #cmWarn .cmw-body { padding: 26px 26px 24px; }
+        #cmWarn .cmw-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 14px;
+            background: #241c0b;
+            border: 1px solid #e0a911;
+            border-radius: 50%;
+            animation: cmWarnPulse 2s ease-in-out infinite;
+        }
+        #cmWarn .cmw-label {
+            color: #f5c542;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        #cmWarn .cmw-title {
+            margin: 8px 0 10px;
+            color: #e6e8ea;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 24px;
+            font-weight: normal;
+        }
+        #cmWarn .cmw-text {
+            margin: 0 0 18px;
+            color: #89929a;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        #cmWarn .cmw-text strong { color: #e6e8ea; }
+        #cmWarn .cmw-rows {
+            margin-bottom: 14px;
+            background: #0f1418;
+            border: 1px solid #292f34;
+            border-radius: 5px;
+            text-align: left;
+        }
+        #cmWarn .cmw-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 11px 14px;
+            border-bottom: 1px solid #242a2f;
+            font-size: 12px;
+        }
+        #cmWarn .cmw-row:last-child { border-bottom: none; }
+        #cmWarn .cmw-row span { flex: 0 0 auto; color: #68727b; }
+        #cmWarn .cmw-row strong {
+            min-width: 0;
+            overflow: hidden;
+            color: #e6e8ea;
+            text-align: right;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #cmWarn .cmw-row.strikes strong { color: #f5c542; }
+        #cmWarn .cmw-hint {
+            margin: 0 0 18px;
+            color: #e3b94d;
+            font-size: 11px;
+        }
+        /* real errors (for example a failed request) stay red */
+        #cmWarn .cmw-error {
+            margin: -8px 0 14px;
+            color: #e07a7a;
+            font-size: 11px;
+        }
+        #cmWarn .cmw-error[hidden] { display: none; }
+        #cmWarn .cmw-btn {
+            width: 100%;
+            height: 44px;
+            background: #f5c542;
+            color: #1a1305;
+            border: 1px solid #ffd866;
+            border-radius: 5px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .2s ease;
+        }
+        #cmWarn .cmw-btn:hover:not(:disabled) { background: #ffd35c; }
+        #cmWarn .cmw-btn:focus-visible { outline: 2px solid #fff3c4; outline-offset: 2px; }
+        #cmWarn .cmw-btn:disabled { opacity: .6; cursor: wait; }
+
+        @keyframes cmWarnFade  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes cmWarnIn    { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+        @keyframes cmWarnPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 66, .45); }
+            50%      { box-shadow: 0 0 0 10px rgba(245, 197, 66, 0); }
         }
     `;
     document.head.appendChild(style);
@@ -457,10 +590,169 @@
         }
     }
 
+    /* ---------- warning popup (appears right away when an admin warns you) ---------- */
+
+    function makeEl(tag, className, text) {
+        const el = document.createElement(tag);
+        if (className) el.className = className;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
+
+    function addRow(box, label, value, extraClass) {
+        const row = makeEl("div", "cmw-row" + (extraClass ? " " + extraClass : ""));
+        const key = makeEl("span", "", label);
+        const val = makeEl("strong", "", value);
+        val.title = value;
+        row.append(key, val);
+        box.appendChild(row);
+    }
+
+    function showWarning(data) {
+        warningOpen = true;
+
+        const many = data.pending > 1;
+        const latest = data.latest || {};
+
+        const overlay = makeEl("div");
+        overlay.id = "cmWarn";
+        overlay.setAttribute("role", "alertdialog");
+        overlay.setAttribute("aria-modal", "true");
+        overlay.setAttribute("aria-labelledby", "cmWarnTitle");
+
+        const card = makeEl("div", "cmw-card");
+        card.appendChild(makeEl("div", "cmw-strip"));
+
+        const body = makeEl("div", "cmw-body");
+
+        const icon = makeEl("div", "cmw-icon");
+        icon.innerHTML =
+            '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f5c542" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' +
+            '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
+        const title = makeEl("h2", "cmw-title",
+            many ? "You have received " + data.pending + " warnings" : "You have received a warning");
+        title.id = "cmWarnTitle";
+
+        const text = makeEl("p", "cmw-text");
+        text.append(
+            many
+                ? "Some of your questions were reported and reviewed by an administrator. They broke the community rules and have been "
+                : "A question you posted was reported and reviewed by an administrator. It broke the community rules and has been ",
+            makeEl("strong", "", "removed"),
+            "."
+        );
+
+        const rows = makeEl("div", "cmw-rows");
+        addRow(rows, "Reason", latest.reason || "Community rules violation");
+        addRow(rows, many ? "Latest removed post" : "Removed post", latest.question_text || "Your question");
+        addRow(rows, "Total warnings", String(data.total), "strikes");
+
+        const hint = makeEl("p", "cmw-hint", "Further violations may lead to your account being banned.");
+        const error = makeEl("p", "cmw-error", "");
+        error.hidden = true;
+
+        const button = makeEl("button", "cmw-btn", "I understand");
+        button.type = "button";
+
+        button.addEventListener("click", async () => {
+            button.disabled = true;
+            error.hidden = true;
+
+            try {
+                const form = new URLSearchParams();
+                form.append("csrf", data.csrf);
+
+                const response = await fetch(WARNINGS_URL, {
+                    method: "POST",
+                    body: form,
+                    credentials: "same-origin"
+                });
+                const result = await response.json();
+
+                if (!result.success) throw new Error(result.message);
+
+                overlay.remove();
+                document.body.style.overflow = overlay.dataset.prevOverflow || "";
+                warningOpen = false;
+            } catch (err) {
+                error.textContent = (err && err.message) || "Something went wrong. Please try again.";
+                error.hidden = false;
+                button.disabled = false;
+            }
+        });
+
+        // the popup can only be closed with the button
+        overlay.addEventListener("keydown", event => {
+            if (event.key === "Tab" || event.key === "Escape") event.preventDefault();
+        });
+
+        body.append(icon, makeEl("div", "cmw-label", "Official notice"), title, text, rows, hint, error, button);
+        card.appendChild(body);
+        overlay.appendChild(card);
+
+        overlay.dataset.prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.body.appendChild(overlay);
+
+        button.focus();
+        beep();
+    }
+
+    async function pollWarnings() {
+        if (warningOpen) return;
+
+        try {
+            const response = await fetch(`${WARNINGS_URL}?action=check`, {
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: { Accept: "application/json" }
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            if (!data || !data.success || !data.pending || warningOpen) return;
+
+            showWarning(data);
+        } catch {
+            /* network hiccup: try again on the next poll */
+        }
+    }
+
+    /* ---------- live warning stream (instant) ---------- */
+
+    function startWarningStream() {
+        if (!window.EventSource) return;
+
+        const source = new EventSource(WARNINGS_STREAM_URL);
+
+        source.addEventListener("open", () => {
+            console.log("[checkmate] warning stream connected");
+        });
+
+        // the server says "a new warning was just added": fetch the details and show the popup
+        source.addEventListener("warning", event => {
+            console.log("[checkmate] warning event received", event.data);
+            pollWarnings();
+        });
+
+        // on error the browser reconnects by itself; the normal polling is the backup
+        source.addEventListener("error", () => {
+            console.log("[checkmate] warning stream reconnecting...");
+        });
+    }
+
+    /* ---------- start ---------- */
+
     function pollAll() {
         pollMessages();
         pollAnswers();
         pollCollab();
+        pollWarnings();
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -469,4 +761,5 @@
 
     pollAll();
     window.setInterval(pollAll, POLL_MS);
+    startWarningStream();
 })();
