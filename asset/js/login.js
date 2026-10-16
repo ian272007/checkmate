@@ -1,12 +1,3 @@
-/* =========================================
-   CHECKMATE LOGIN JAVASCRIPT
-========================================= */
-
-
-/* =========================================
-   GET ELEMENTS
-========================================= */
-
 const accountOptions =
     document.querySelectorAll(".account-option");
 
@@ -34,7 +25,6 @@ const forgotPassword =
 const toast =
     document.getElementById("toast");
 
-// red messages under the boxes
 const idError =
     document.getElementById("idError");
 
@@ -42,21 +32,11 @@ const passwordError =
     document.getElementById("passwordError");
 
 
-/* =========================================
-   DEFAULT ACCOUNT TYPE
-========================================= */
-
-// the hidden input that gets sent to PHP
 const accountTypeInput =
     document.getElementById("accountType");
 
-// start with whatever PHP put in the hidden input (student or admin)
 let accountType = accountTypeInput.value;
 
-
-/* =========================================
-   FIELD ERRORS (red message under a box)
-========================================= */
 
 function setFieldError(input, errorElement, message) {
 
@@ -80,7 +60,6 @@ function clearFieldError(input, errorElement) {
 }
 
 
-// the red message goes away as soon as the user types again
 usernameInput.addEventListener("input", function() {
 
     clearFieldError(usernameInput, idError);
@@ -94,16 +73,11 @@ passwordInput.addEventListener("input", function() {
 });
 
 
-/* =========================================
-   ACCOUNT TYPE SELECTION
-========================================= */
-
 accountOptions.forEach(function(option) {
 
     option.addEventListener("click", function() {
 
 
-        /* Remove active from all */
         accountOptions.forEach(function(item) {
 
             item.classList.remove("active");
@@ -111,23 +85,18 @@ accountOptions.forEach(function(option) {
         });
 
 
-        /* Add active to clicked option */
         option.classList.add("active");
 
 
-        /* Save account type */
         accountType = option.dataset.type;
 
 
-        /* Also save it in the hidden input so PHP receives it */
         accountTypeInput.value = accountType;
 
 
-        /* The old "wrong account type" message no longer applies */
         clearFieldError(usernameInput, idError);
 
 
-        /* Small feedback */
         if (accountType === "student") {
 
             showToast("Student account selected.");
@@ -143,17 +112,11 @@ accountOptions.forEach(function(option) {
 });
 
 
-/* =========================================
-   PASSWORD SHOW / HIDE
-========================================= */
-
 passwordToggle.addEventListener("click", function() {
 
 
     if (passwordInput.type === "password") {
 
-
-        /* Show password */
 
         passwordInput.type = "text";
 
@@ -171,8 +134,6 @@ passwordToggle.addEventListener("click", function() {
 
     } else {
 
-
-        /* Hide password */
 
         passwordInput.type = "password";
 
@@ -192,10 +153,6 @@ passwordToggle.addEventListener("click", function() {
 });
 
 
-/* =========================================
-   TOAST FUNCTION
-========================================= */
-
 function showToast(message) {
 
     toast.textContent = message;
@@ -212,19 +169,12 @@ function showToast(message) {
 }
 
 
-/* =========================================
-   LOGIN FORM
-========================================= */
-
 loginForm.addEventListener("submit", function(event) {
 
 
-    /* Stop the form from sending for now.
-       We check the inputs first, then send it with loginForm.submit() below. */
     event.preventDefault();
 
 
-    /* Get input values */
     const username =
         usernameInput.value.trim();
 
@@ -232,7 +182,6 @@ loginForm.addEventListener("submit", function(event) {
         passwordInput.value.trim();
 
 
-    /* Start clean */
     clearFieldError(usernameInput, idError);
 
     clearFieldError(passwordInput, passwordError);
@@ -240,10 +189,6 @@ loginForm.addEventListener("submit", function(event) {
 
     let hasError = false;
 
-
-    /* =====================================
-       CHECK STUDENT ID
-    ====================================== */
 
     if (username === "") {
 
@@ -258,10 +203,6 @@ loginForm.addEventListener("submit", function(event) {
         hasError = true;
     }
 
-
-    /* =====================================
-       CHECK PASSWORD
-    ====================================== */
 
     if (password === "") {
 
@@ -288,24 +229,10 @@ loginForm.addEventListener("submit", function(event) {
     }
 
 
-    /* =====================================
-       SEND TO PHP
-
-       Both fields are filled in, so we
-       submit the form to login.php.
-       PHP checks the Student ID, password
-       and account type, then redirects
-       to student_home.php or admin_home.php.
-    ====================================== */
-
     loginForm.submit();
 
 });
 
-
-/* =========================================
-   FORGOT PASSWORD
-========================================= */
 
 forgotPassword.addEventListener("click", function(event) {
 
@@ -318,14 +245,6 @@ forgotPassword.addEventListener("click", function(event) {
 
 });
 
-
-/* =========================================
-   ERROR FROM PHP
-
-   If login.php found a problem it already
-   printed the red message under the box.
-   Here we only move the cursor there.
-========================================= */
 
 if (idError.classList.contains("show")) {
 

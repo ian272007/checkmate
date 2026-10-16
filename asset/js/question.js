@@ -6,7 +6,6 @@ if (searchInput) {
         const questions = document.querySelectorAll(".question-card");
 
         questions.forEach(function (question) {
-            // Search only the question content, not the report menu text
             const details = question.querySelector(".question-details");
             const text = (details ? details : question).textContent.toLowerCase();
 
@@ -19,8 +18,6 @@ if (searchInput) {
     });
 }
 
-
-/* Attachment menu */
 
 const attachmentPlus = document.getElementById("attachmentPlus");
 const attachmentMenu = document.getElementById("attachmentMenu");
@@ -79,8 +76,6 @@ if (attachmentPlus && attachmentMenu && attachmentInput) {
 }
 
 
-/* Answer form: open and close under each question */
-
 document.querySelectorAll(".question-card").forEach(function (card) {
     const form = card.querySelector(".answer-form");
 
@@ -130,7 +125,6 @@ document.querySelectorAll(".question-card").forEach(function (card) {
         });
     }
 
-    // Prevent double posting
     form.addEventListener("submit", function () {
         if (submit) {
             submit.disabled = true;
@@ -139,8 +133,6 @@ document.querySelectorAll(".question-card").forEach(function (card) {
     });
 });
 
-
-/* Pop-up message (for example "Your question has been posted.") */
 
 function showFlash(type, message) {
     let box = document.getElementById("cmFlash");
@@ -185,7 +177,6 @@ const flashData = document.getElementById("flashData");
 if (flashData) {
     showFlash(flashData.dataset.type, flashData.dataset.message);
 
-    // Remove ?notice=... so the message does not show again on refresh
     if (window.history && window.history.replaceState) {
         window.history.replaceState(
             null,
@@ -195,10 +186,6 @@ if (flashData) {
     }
 }
 
-
-/* =========================================================
-   Report menu (three dots) + Report popup
-   ========================================================= */
 
 const questionsList = document.getElementById("questionsList");
 let openReportMenu = null;
@@ -218,7 +205,6 @@ function placeReportMenu(button, dropdown) {
     const width = dropdown.offsetWidth;
     const height = dropdown.offsetHeight;
 
-    // open below the dots, or above if there is no room
     let top = rect.bottom + 6;
     if (top + height > window.innerHeight - 8) {
         top = Math.max(8, rect.top - height - 6);
@@ -242,8 +228,6 @@ function markReported(card) {
     done.textContent = "✓ You already reported this question";
     dropdown.appendChild(done);
 }
-
-/* ---------- Report popup ---------- */
 
 const reportModal = document.getElementById("reportModal");
 const reportForm = document.getElementById("reportForm");
@@ -342,7 +326,6 @@ if (reportModal) {
     reportImageRemove.addEventListener("click", clearReportImage);
     reportCancel.addEventListener("click", closeReportModal);
 
-    // click the dark area outside the box
     reportModal.addEventListener("click", function (event) {
         if (event.target === reportModal) {
             closeReportModal();
@@ -402,7 +385,6 @@ if (questionsList) {
 
     questionsList.addEventListener("click", function (event) {
 
-        // open / close the three-dot menu
         const dots = event.target.closest(".report-dots");
 
         if (dots) {
@@ -424,7 +406,6 @@ if (questionsList) {
             return;
         }
 
-        // "Report" pressed -> open the popup
         const option = event.target.closest(".report-option");
 
         if (!option) {
@@ -438,7 +419,6 @@ if (questionsList) {
     });
 }
 
-// click anywhere else, press Esc, scroll or resize = close the menu
 document.addEventListener("click", function (event) {
     if (openReportMenu && !openReportMenu.dropdown.contains(event.target)) {
         closeReportMenu();
@@ -455,11 +435,6 @@ window.addEventListener("scroll", closeReportMenu, true);
 window.addEventListener("resize", closeReportMenu);
 
 
-/* =========================================================
-   Open a question from Home (questions.php#question-ID):
-   scroll to it and highlight it for a moment
-   ========================================================= */
-
 (function () {
     const match = window.location.hash.match(/^#question-(\d+)$/);
 
@@ -469,7 +444,6 @@ window.addEventListener("resize", closeReportMenu);
 
     const targetId = "question-" + match[1];
 
-    // highlight animation (no CSS file edit needed)
     const style = document.createElement("style");
     style.textContent =
         "@keyframes cmPulse {" +
@@ -500,7 +474,6 @@ window.addEventListener("resize", closeReportMenu);
             return;
         }
 
-        // stop after ~2 seconds: the question may have been removed
         if (tries >= 10) {
             clearInterval(timer);
             showFlash("error", "That question is no longer available.");
@@ -508,11 +481,6 @@ window.addEventListener("resize", closeReportMenu);
     }, 200);
 })();
 
-
-/* =========================================================
-   Question typed on Home ("Make a Move"):
-   fill the question box here, then clear the saved draft
-   ========================================================= */
 
 (function () {
     const box = document.getElementById("question");

@@ -1,12 +1,14 @@
 <?php
 // subject_course_api.php - called by subject_course.js
-// Handles: add, update, archive, restore, delete for courses and subjects.
+// Handles: add, update, archive, restore, delete for programs ("course") and subjects,
+// plus set_programs (which programs offer a subject, with optional year level / semester).
 // Always answers with JSON: { "success": true/false, "message": "...", "item": {...} }
 
 session_start();
 header("Content-Type: application/json");
 
 require "../../config/config.php";   // your connection file
+require_once "../../config/program_helpers.php";
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn->set_charset("utf8mb4");
@@ -53,7 +55,8 @@ $id     = isset($_POST["id"]) ? (int) $_POST["id"] : 0;
 $name   = trim($_POST["name"] ?? "");
 $status = $_POST["status"] ?? "Active";
 
-$word = ($type === "course") ? "course" : "subject";
+// "course" is called "program" in the screens
+$word = ($type === "course") ? "program" : "subject";
 
 // ---------- helper: how many questions use this name ----------
 function countUsed($conn, $qcol, $name) {
@@ -147,6 +150,16 @@ try {
             $stmt->bind_param("ss", $name, $oldName);
             $stmt->execute();
             $stmt->close();
+
+            // students store their registered program as text too (users.course),
+            // so a renamed program must be renamed there as well or those
+            // students would suddenly have "no valid program"
+            if ($type === "course") {
+                $stmt = $conn->prepare("UPDATE users SET course = ? WHERE course = ?");
+                $stmt->bind_param("ss", $name, $oldName);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
 
         $conn->commit();
@@ -183,6 +196,107 @@ try {
         reply(true, ucfirst($word) . ($action === "archive" ? " archived." : " restored."), [
             "status" => $newStatus
         ]);
+    }
+
+    // ---------- SET PROGRAMS OF A SUBJECT ----------
+    // programs = JSON list of { course_id, year_level, semester }
+    // Replaces ONLY this subject's links. Nothing else is touched.
+    if ($action === "set_programs") {
+
+        if ($type !== "subject") {
+            reply(false, "Invalid type.", [], 400);
+        }
+        if ($id <= 0) {
+            reply(false, "Invalid id.", [], 400);
+        }
+
+        $stmt = $conn->prepare("SELECT id FROM question_subjects WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $found = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+
+        if (!$found) {
+            reply(false, "Subject not found.", [], 404);
+        }
+
+        $list = json_decode((string) ($_POST["programs"] ?? "[]"), true);
+        if (!is_array($list)) {
+            reply(false, "Invalid program list.", [], 400);
+        }
+
+        // validate every entry on the server; one entry per program
+        $clean = [];
+
+        foreach ($list as $item) {
+            if (!is_array($item)) {
+                reply(false, "Invalid program list.", [], 400);
+            }
+
+            $courseId = (int) ($item["course_id"] ?? 0);
+            $year     = trim((string) ($item["year_level"] ?? ""));
+            $sem      = trim((string) ($item["semester"] ?? ""));
+
+            if ($courseId <= 0) {
+                reply(false, "Invalid program.", [], 400);
+            }
+            if ($year !== "" && !in_array($year, PROGRAM_YEAR_LEVELS, true)) {
+                reply(false, "Invalid year level.", [], 400);
+            }
+            if ($sem !== "" && !in_array($sem, PROGRAM_SEMESTERS, true)) {
+                reply(false, "Invalid semester.", [], 400);
+            }
+
+            $clean[$courseId] = [
+                "year_level" => $year,
+                "semester"   => $sem
+            ];
+        }
+
+        // every program id must really exist
+        $check = $conn->prepare("SELECT id FROM question_courses WHERE id = ?");
+        foreach (array_keys($clean) as $courseId) {
+            $check->bind_param("i", $courseId);
+            $check->execute();
+            if ($check->get_result()->num_rows === 0) {
+                $check->close();
+                reply(false, "One of the selected programs does not exist.", [], 400);
+            }
+        }
+        $check->close();
+
+        $conn->begin_transaction();
+
+        $stmt = $conn->prepare("DELETE FROM course_subjects WHERE subject_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $conn->prepare(
+            "INSERT INTO course_subjects (course_id, subject_id, year_level, semester)
+             VALUES (?, ?, ?, ?)"
+        );
+
+        $mappings = [];
+
+        foreach ($clean as $courseId => $place) {
+            $yearValue = ($place["year_level"] === "") ? null : $place["year_level"];
+            $semValue  = ($place["semester"] === "") ? null : $place["semester"];
+
+            $stmt->bind_param("iiss", $courseId, $id, $yearValue, $semValue);
+            $stmt->execute();
+
+            $mappings[] = [
+                "course_id"  => (int) $courseId,
+                "year_level" => $place["year_level"],
+                "semester"   => $place["semester"]
+            ];
+        }
+
+        $stmt->close();
+        $conn->commit();
+
+        reply(true, "Program assignments saved.", ["mappings" => $mappings]);
     }
 
     // ---------- DELETE ----------

@@ -137,8 +137,6 @@
         ).toUpperCase();
     }
 
-    /* Lock the composer when the collaboration is not (or no longer) accepted */
-
     function isActiveLocked() {
         const conversation = state.conversations.find(
             item => Number(item.conversation_id) ===
@@ -262,7 +260,6 @@
         state.activeConversationId = Number(conversationId);
         state.activeOtherId = Number(otherId);
 
-        // lets notify.js know which chat is open, so it skips that popup
         window.CHECKMATE_ACTIVE_CONVERSATION = state.activeConversationId;
 
         state.activeOther =
@@ -306,7 +303,6 @@
             }
         });
 
-        // the chat may have been closed/deleted while the request was running
         if (!state.activeConversationId) return;
 
         const messages = data.messages || [];
@@ -399,7 +395,6 @@
         } catch (error) {
             showAlert(error.message);
 
-            // the collaboration may have changed: refresh the lock state
             loadConversations().catch(() => {});
         } finally {
             state.busy = false;
@@ -408,8 +403,6 @@
             if (!messageInput.disabled) messageInput.focus();
         }
     }
-
-    /* ---------- delete conversation ---------- */
 
     function openDeleteModal() {
         if (!state.activeConversationId) return;
@@ -468,8 +461,6 @@
             closeDeleteModal();
         }
     });
-
-    /* ---------- events ---------- */
 
     list.addEventListener("click", async event => {
         const row = event.target.closest(".person-row");
@@ -530,7 +521,6 @@
         try {
             await loadConversations();
 
-            // open a chat when arriving from a notification (?c=conversation_id)
             const wanted = Number(
                 new URLSearchParams(window.location.search).get("c")
             );

@@ -1,14 +1,3 @@
-/* =========================================================
-   Collaboration page
-   - filter tabs + search over your requests
-   - expand / collapse details
-   - Find a peer: search students, send and cancel requests
-   - Accept / Reject / Cancel without reloading the page
-   - styled confirm dialog (cm_confirm.js) instead of the browser's confirm()
-   - live refresh for BOTH students (checks every 2 seconds)
-   - clears the sidebar notification badge while this page is open
-   ========================================================= */
-
 (() => {
     "use strict";
 
@@ -69,8 +58,6 @@
         }, 4000);
     }
 
-    /* Styled confirm dialog (cm_confirm.js). Falls back to the browser's
-       confirm() only if that script failed to load. */
     function askConfirm(options) {
         if (typeof window.cmConfirm === "function") {
             return window.cmConfirm(options);
@@ -79,7 +66,6 @@
         return Promise.resolve(window.confirm(options.message));
     }
 
-    /* POST helper: always asks for JSON back */
     async function postAction(fields) {
         const response = await fetch(cfg.url, {
             method: "POST",
@@ -104,19 +90,15 @@
         return data;
     }
 
-    /* Clear the sidebar badge once the student is looking at this page */
     async function markSeen() {
         if (document.hidden) return;
 
         try {
             await postAction({ action: "mark_seen" });
         } catch {
-            /* not important */
         }
     }
 
-
-    /* ---------- Filter tabs and search ---------- */
 
     function syncTabs() {
         document.querySelectorAll(".filter-tab").forEach(tab => {
@@ -169,8 +151,6 @@
     }
 
 
-    /* ---------- Open and close the details of a request ---------- */
-
     function toggleCollab(header, forceOpen) {
         const card = header.closest(".my-question");
         const panel = document.getElementById(
@@ -194,7 +174,6 @@
 
             if (!header || !collabList.contains(header)) return;
 
-            // Accept / Reject / Cancel buttons must not open or close the row
             if (event.target.closest("button, a, form")) return;
 
             toggleCollab(header);
@@ -211,7 +190,6 @@
             }
         });
 
-        /* Accept / Reject / Cancel: no page reload */
         collabList.addEventListener("submit", async event => {
             const form = event.target.closest(".collab-form");
 
@@ -250,18 +228,14 @@
                 flash(error.message, false);
             }
 
-            // Success or not, show what the server now says
             await refreshList();
         });
     }
 
 
-    /* ---------- Live refresh ---------- */
-
     async function refreshList() {
         if (!collabList) return;
 
-        // A refresh is already running: run once more right after it
         if (refreshing) {
             refreshQueued = true;
             return;
@@ -319,13 +293,10 @@
             syncTabs();
             applyCollabFilters();
 
-            // Keep the "Find a peer" list in sync (Pending / Collaborating tags)
             loadStudents();
 
-            // A new request or acceptance arrived while this page is open
             markSeen();
         } catch {
-            /* try again on the next check */
         } finally {
             refreshing = false;
 
@@ -356,13 +327,11 @@
                 await refreshList();
             }
         } catch {
-            /* ignore network hiccups */
         } finally {
             checking = false;
         }
     }
 
-    // Keeps running even when the tab is in the background
     window.setInterval(checkForChanges, POLL_MS);
 
     document.addEventListener("visibilitychange", () => {
@@ -377,8 +346,6 @@
         markSeen();
     });
 
-
-    /* ---------- Find a peer ---------- */
 
     const findQuestion = $("findQuestion");
     const findSearch = $("findSearch");
@@ -484,7 +451,6 @@
                 throw new Error(data.error || "Unable to search students.");
             }
 
-            // Keep the scroll position when the list is refreshed live
             const scrollTop = findResults.scrollTop;
 
             renderStudents(data.users || []);
@@ -513,7 +479,6 @@
             const sendButton = event.target.closest(".find-send");
             const cancelButton = event.target.closest(".find-cancel");
 
-            /* ----- Send request ----- */
             if (sendButton) {
                 sendButton.disabled = true;
                 sendButton.textContent = "Sending...";
@@ -534,7 +499,6 @@
                 return;
             }
 
-            /* ----- Cancel request ----- */
             if (cancelButton) {
                 const ok = await askConfirm({
                     title: "Cancel request?",

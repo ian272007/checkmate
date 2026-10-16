@@ -3,15 +3,17 @@
    Edit or delete the logged-in student's OWN question.
    Put this file in: view/student/question_manage_api.php
    POST fields: action (edit|delete), question_id, csrf
-   edit also takes: question, subject, question_course,
-                    question_type, attachment (file),
-                    remove_attachment (1)
+   edit also takes: question, subject, question_type,
+                    attachment (file), remove_attachment (1)
+   (question_course may still be sent by older pages; it is ignored:
+    a question keeps the program it was posted under.)
    ========================================================= */
 
 session_start();
 header("Content-Type: application/json");
 
 require_once "../../config/config.php";
+require_once "../../config/program_helpers.php";
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn->set_charset("utf8mb4");
@@ -161,12 +163,14 @@ try {
 
     $question = trim((string)($_POST["question"] ?? ""));
     $subject = trim((string)($_POST["subject"] ?? ""));
-    $course = trim((string)($_POST["question_course"] ?? ""));
     $type = trim((string)($_POST["question_type"] ?? ""));
     $removeAttachment = ((string)($_POST["remove_attachment"] ?? "")) === "1";
 
-    $subjects = loadOptions($conn, "question_subjects", "subject_name");
-    $courses = loadOptions($conn, "question_courses", "course_name");
+    // The program never changes when editing: it stays what it was.
+    $program = (string)$current["question_course"];
+
+    // Subjects must belong to that program
+    $subjects = loadSubjectsForProgram($conn, $program);
     $types = loadOptions($conn, "question_types", "type_name");
 
     // Keeping the value it already has is always fine, even if the admin
@@ -178,10 +182,7 @@ try {
         reply(false, "Your question must be " . MAX_QUESTION_LENGTH . " characters or fewer.", [], 400);
     }
     if (!in_array($subject, $subjects, true) && $subject !== (string)$current["subject"]) {
-        reply(false, "Please select a valid subject.", [], 400);
-    }
-    if (!in_array($course, $courses, true) && $course !== (string)$current["question_course"]) {
-        reply(false, "Please select a valid course.", [], 400);
+        reply(false, "Please select a valid subject for this question's program.", [], 400);
     }
     if (!in_array($type, $types, true) && $type !== (string)$current["question_type"]) {
         reply(false, "Please select a valid question type.", [], 400);
@@ -242,17 +243,17 @@ try {
         $finalAttachment = $current["attachment"];
     }
 
+    // question_course is not in the SET list on purpose
     $stmt = $conn->prepare(
         "UPDATE questions
-         SET question = ?, subject = ?, question_course = ?,
+         SET question = ?, subject = ?,
              question_type = ?, attachment = ?
          WHERE question_id = ? AND user_id = ? AND status = 'Active'"
     );
     $stmt->bind_param(
-        "sssssii",
+        "ssssii",
         $question,
         $subject,
-        $course,
         $type,
         $finalAttachment,
         $questionId,
@@ -269,7 +270,7 @@ try {
     reply(true, "Your question was updated.", [
         "question"   => $question,
         "subject"    => $subject,
-        "course"     => $course,
+        "course"     => $program,
         "type"       => $type,
         "attachment" => $finalAttachment
     ]);

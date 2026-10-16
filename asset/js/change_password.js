@@ -1,4 +1,3 @@
-// ---------- 1. GET ELEMENTS ----------
 var toast = document.getElementById("toast");
 
 var currentPassword = document.getElementById("currentPassword");
@@ -8,7 +7,6 @@ var formError = document.getElementById("formError");
 var saveButton = document.getElementById("saveButton");
 
 
-// ---------- 2. TOAST ----------
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add("show");
@@ -19,7 +17,6 @@ function showToast(message) {
 }
 
 
-// ---------- 3. SHOW / HIDE BUTTONS (EYE ICON) ----------
 var SVG_OPEN =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
     'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -34,7 +31,6 @@ var SVG_CLOSED =
     '<line x1="3" y1="3" x2="21" y2="21"/></svg>';
 
 function setEye(button, visible) {
-    // visible = password is currently shown
     button.innerHTML = visible ? SVG_OPEN : SVG_CLOSED;
     button.setAttribute("aria-label", visible ? "Hide password" : "Show password");
     button.setAttribute("title", visible ? "Hide password" : "Show password");
@@ -62,8 +58,6 @@ for (var t = 0; t < toggleButtons.length; t++) {
 }
 
 
-// ---------- 4. PASSWORD RULES ----------
-// returns true/false for each rule
 function checkRules() {
 
     var pass = newPassword.value;
@@ -101,7 +95,6 @@ newPassword.addEventListener("input", showRules);
 confirmPassword.addEventListener("input", showRules);
 
 
-// ---------- 5. SAVE ----------
 saveButton.addEventListener("click", function () {
 
     formError.textContent = "";
@@ -128,7 +121,6 @@ saveButton.addEventListener("click", function () {
         return;
     }
 
-    // send to PHP (the PHP checks the current password and saves the new hash)
     var data = new FormData();
     data.append("current_password", currentPassword.value);
     data.append("new_password", newPassword.value);
@@ -161,7 +153,6 @@ saveButton.addEventListener("click", function () {
 });
 
 
-// ---------- 6. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -171,7 +162,6 @@ accountButton.addEventListener("click", function (event) {
     accountButton.classList.toggle("open");
 });
 
-// clicking anywhere else (or pressing Esc) closes it
 document.addEventListener("click", function () {
     accountMenu.classList.remove("show");
     accountButton.classList.remove("open");
@@ -185,7 +175,6 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-// ---------- 7. NOTIFICATION BUTTON ----------
 document.getElementById("notificationButton").addEventListener("click", function () {
     showToast("You have 3 new notifications.");
 });

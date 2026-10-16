@@ -1,9 +1,14 @@
 <?php
 /* =========================================================
-   Post a NEW question (used by the Home page "Make a Move").
+   Post a NEW question (used by the Questions page and the
+   Home page "Make a Move").
    Put this file in: view/student/question_post_api.php
-   POST fields: csrf, question, subject, question_course,
-                question_type, attachment (optional file)
+   POST fields: csrf, question, subject, question_type,
+                attachment (optional file)
+   The program is NOT taken from the form: it is always the
+   student's own registered program (users.course), and the
+   subject must be linked to that program.
+   Failed answers may include "field" so the page can focus it.
    ========================================================= */
 
 session_start();
@@ -11,6 +16,7 @@ header("Content-Type: application/json");
 header("Cache-Control: no-store");
 
 require_once "../../config/config.php";
+require_once "../../config/program_helpers.php";
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $conn->set_charset("utf8mb4");
@@ -81,8 +87,8 @@ if (
 $newFile = null; // file saved during this request (removed if something fails)
 
 try {
-    // Who is posting
-    $stmt = $conn->prepare("SELECT id FROM users WHERE student_id = ? LIMIT 1");
+    // Who is posting (and which program they are registered in)
+    $stmt = $conn->prepare("SELECT id, course FROM users WHERE student_id = ? LIMIT 1");
     $stmt->bind_param("s", $_SESSION["student_id"]);
     $stmt->execute();
     $me = $stmt->get_result()->fetch_assoc();
@@ -94,33 +100,43 @@ try {
 
     $userId = (int)$me["id"];
 
+    // The program is always the student's own (any value in the form is ignored)
+    $program = trim((string)$me["course"]);
+
     $question = trim((string)($_POST["question"] ?? ""));
     $subject  = trim((string)($_POST["subject"] ?? ""));
-    $course   = trim((string)($_POST["question_course"] ?? ""));
     $type     = trim((string)($_POST["question_type"] ?? ""));
 
-    $subjects = loadOptions($conn, "question_subjects", "subject_name");
-    $courses  = loadOptions($conn, "question_courses", "course_name");
-    $types    = loadOptions($conn, "question_types", "type_name");
+    $types = loadOptions($conn, "question_types", "type_name");
 
     if ($question === "") {
-        reply(false, "Please enter your question.", [], 400);
+        reply(false, "Please enter your question.", ["field" => "question"], 400);
     }
 
     if (mb_strlen($question, "UTF-8") > MAX_QUESTION_LENGTH) {
-        reply(false, "Your question must be " . MAX_QUESTION_LENGTH . " characters or fewer.", [], 400);
+        reply(false, "Your question must be " . MAX_QUESTION_LENGTH . " characters or fewer.", ["field" => "question"], 400);
+    }
+
+    // Missing / unknown / archived program: refuse, never assign a default
+    $programState = checkStudentProgram($conn, $program);
+
+    if ($programState !== "ok") {
+        reply(false, programProblemMessage($programState), [], 400);
+    }
+
+    // The subject must be linked to THIS student's program
+    $subjects = loadSubjectsForProgram($conn, $program);
+
+    if (count($subjects) === 0) {
+        reply(false, "No subjects are set up for your program yet. Please contact the administrator.", [], 400);
     }
 
     if (!in_array($subject, $subjects, true)) {
-        reply(false, "Please select a valid subject.", [], 400);
-    }
-
-    if (!in_array($course, $courses, true)) {
-        reply(false, "Please select a valid course.", [], 400);
+        reply(false, "Please select a valid subject for your program.", ["field" => "subject"], 400);
     }
 
     if (!in_array($type, $types, true)) {
-        reply(false, "Please select a valid question type.", [], 400);
+        reply(false, "Please select a valid question type.", ["field" => "question_type"], 400);
     }
 
     // Optional attachment
@@ -169,6 +185,7 @@ try {
         }
     }
 
+    // the questions table still calls this column question_course
     $stmt = $conn->prepare(
         "INSERT INTO questions
          (user_id, question, status, create_at,
@@ -180,7 +197,7 @@ try {
         $userId,
         $question,
         $subject,
-        $course,
+        $program,
         $type,
         $newFile
     );

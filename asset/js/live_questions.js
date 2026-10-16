@@ -1,11 +1,6 @@
-// live_questions.js
-// Used by questions.php AND my_question.php.
-// Every few seconds it asks questions_live_api.php which questions still exist
-// and removes the cards of deleted questions, with no page refresh.
-
 (function () {
 
-    var POLL_MS = 3000;   // 3 seconds
+    var POLL_MS = 3000;
     var busy = false;
 
     var myList = document.getElementById("myQuestionsList");
@@ -16,7 +11,6 @@
         return;
     }
 
-    // ---------- helpers ----------
     function getCards() {
         if (isMine) {
             return list.querySelectorAll(".my-question[data-qid]");
@@ -31,7 +25,6 @@
         return parseInt(card.id.replace("question-", ""), 10);
     }
 
-    // updates the numbers on My Questions after a card is removed
     function updateCounts() {
         if (!isMine) {
             return;
@@ -67,7 +60,6 @@
         }
     }
 
-    // shows the "nothing here" box when the last card is gone
     function showEmptyIfNeeded() {
         if (getCards().length > 0 || list.querySelector("[data-live-empty]")) {
             return;
@@ -95,10 +87,8 @@
         }, 300);
     }
 
-    // ---------- polling ----------
     function checkForDeleted() {
 
-        // don't pile up requests, and don't ask while the tab is hidden
         if (busy || document.hidden) {
             return;
         }
@@ -126,7 +116,6 @@
                 }
             })
             .catch(function () {
-                // ignore, try again on the next round
             })
             .finally(function () {
                 busy = false;
@@ -135,7 +124,6 @@
 
     setInterval(checkForDeleted, POLL_MS);
 
-    // when the student comes back to this tab, check immediately
     document.addEventListener("visibilitychange", function () {
         if (!document.hidden) {
             checkForDeleted();

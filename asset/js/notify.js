@@ -1,14 +1,3 @@
-/* CHECKMATE - notifications (shared by all student pages)
-   - new messages: badge on "Messages", toast, sound
-   - new answers to your questions: badge on "My Questions", toast, sound
-   - new collaboration requests / accepted requests: badge on "Collaboration", toast, sound
-   - warnings from an admin: full-screen popup, shown live while the student is online
-     (instant through Server-Sent Events, with polling as a backup)
-   - total unread count in the browser tab title
-   Needs: messages_api.php (action=unread), notifications_api.php
-   (action=answers, action=collab), warnings_api.php (action=check)
-   and warnings_stream.php in view/student/ */
-
 (() => {
     "use strict";
 
@@ -27,8 +16,6 @@
     let unseenAnswers = 0;
     let unseenCollab = 0;
     let warningOpen = false;
-
-    /* ---------- styles (injected, so no CSS file needs editing) ---------- */
 
     const style = document.createElement("style");
     style.textContent = `
@@ -169,7 +156,6 @@
             to   { transform: scaleX(0); }
         }
 
-        /* ---------- warning popup (yellow = caution) ---------- */
         #cmWarn {
             position: fixed;
             inset: 0;
@@ -193,7 +179,6 @@
             text-align: center;
             animation: cmWarnIn .35s cubic-bezier(.2, .9, .3, 1.2);
         }
-        /* single solid line along the top of the card, in warning yellow */
         #cmWarn .cmw-strip {
             height: 4px;
             background: #f5c542;
@@ -263,7 +248,6 @@
             color: #e3b94d;
             font-size: 11px;
         }
-        /* real errors (for example a failed request) stay red */
         #cmWarn .cmw-error {
             margin: -8px 0 14px;
             color: #e07a7a;
@@ -298,17 +282,14 @@
     `;
     document.head.appendChild(style);
 
-    /* ---------- helpers ---------- */
-
     function storeGet(key) {
         try { return sessionStorage.getItem(key); } catch { return null; }
     }
 
     function storeSet(key, value) {
-        try { sessionStorage.setItem(key, String(value)); } catch { /* ignore */ }
+        try { sessionStorage.setItem(key, String(value)); } catch { }
     }
 
-    // Small number badge on a sidebar link (for example Messages or My Questions)
     function setBadge(page, count) {
         const text = count > 99 ? "99+" : String(count);
 
@@ -412,15 +393,14 @@
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.27);
-        } catch { /* sound is optional */ }
+        } catch { }
     }
 
-    // Browsers only allow sound after the user clicked something on the page.
     document.addEventListener("click", () => {
         if (audioCtx) return;
         try {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        } catch { /* ignore */ }
+        } catch { }
     }, { once: true });
 
     async function getJson(url) {
@@ -436,8 +416,6 @@
 
         return data && data.ok ? data : null;
     }
-
-    /* ---------- messages ---------- */
 
     async function pollMessages() {
         try {
@@ -460,7 +438,6 @@
 
             const latestId = Number(latest.message_id);
 
-            // First visit in this tab: remember the current state, don't popup old messages.
             if (stored === null) {
                 storeSet(key, latestId);
                 return;
@@ -485,11 +462,8 @@
                 }
             }
         } catch {
-            /* network hiccup: try again on the next poll */
         }
     }
-
-    /* ---------- answers to my questions ---------- */
 
     async function pollAnswers() {
         try {
@@ -509,7 +483,6 @@
             const stored = Number(storeGet(key)) || 0;
             const latestId = Number(latest.answer_id);
 
-            // Pop up once for each new answer (also right after logging in)
             if (latestId > stored) {
                 storeSet(key, latestId);
 
@@ -522,11 +495,8 @@
                 beep();
             }
         } catch {
-            /* network hiccup: try again on the next poll */
         }
     }
-
-    /* ---------- collaboration requests / accepted requests ---------- */
 
     function loadNotified(key) {
         try {
@@ -560,7 +530,6 @@
 
                 notified.push(tag);
 
-                // Already looking at the Collaboration page: the list shows it
                 if (onPage) return;
 
                 ring = true;
@@ -586,11 +555,8 @@
 
             if (ring) beep();
         } catch {
-            /* network hiccup: try again on the next poll */
         }
     }
-
-    /* ---------- warning popup (appears right away when an admin warns you) ---------- */
 
     function makeEl(tag, className, text) {
         const el = document.createElement(tag);
@@ -684,7 +650,6 @@
             }
         });
 
-        // the popup can only be closed with the button
         overlay.addEventListener("keydown", event => {
             if (event.key === "Tab" || event.key === "Escape") event.preventDefault();
         });
@@ -719,11 +684,8 @@
 
             showWarning(data);
         } catch {
-            /* network hiccup: try again on the next poll */
         }
     }
-
-    /* ---------- live warning stream (instant) ---------- */
 
     function startWarningStream() {
         if (!window.EventSource) return;
@@ -734,19 +696,15 @@
             console.log("[checkmate] warning stream connected");
         });
 
-        // the server says "a new warning was just added": fetch the details and show the popup
         source.addEventListener("warning", event => {
             console.log("[checkmate] warning event received", event.data);
             pollWarnings();
         });
 
-        // on error the browser reconnects by itself; the normal polling is the backup
         source.addEventListener("error", () => {
             console.log("[checkmate] warning stream reconnecting...");
         });
     }
-
-    /* ---------- start ---------- */
 
     function pollAll() {
         pollMessages();

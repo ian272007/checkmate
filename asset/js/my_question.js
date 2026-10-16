@@ -6,15 +6,10 @@ const myQuestionsList = document.getElementById("myQuestionsList");
 let activeFilter = "all";
 
 
-/* Always read the cards fresh, because deleted ones disappear while the page is open */
-
 function getCards() {
     return document.querySelectorAll(".my-question");
 }
 
-
-/* Text used by the search box.
-   The Edit/Delete buttons are left out so searching "edit" doesn't match every card. */
 
 function searchText(card) {
     const clone = card.cloneNode(true);
@@ -26,8 +21,6 @@ function searchText(card) {
     return clone.textContent.toLowerCase();
 }
 
-
-/* Show or hide questions based on the tab and the search box */
 
 function applyFilters() {
     const term = myQuestionSearch
@@ -54,7 +47,6 @@ function applyFilters() {
     });
 
     if (filterEmpty) {
-        // when there are no cards at all, the "no questions" box is shown instead
         filterEmpty.hidden = cards.length === 0 || visible !== 0;
     }
 }
@@ -76,8 +68,6 @@ if (myQuestionSearch) {
     myQuestionSearch.addEventListener("input", applyFilters);
 }
 
-
-/* Open and close the answers under a question */
 
 function toggleQuestion(header) {
     const card = header.closest(".my-question");
@@ -112,16 +102,9 @@ document.querySelectorAll(".my-question-header").forEach(function (header) {
 });
 
 
-/* =========================================================
-   LIVE UPDATES
-   Every few seconds, ask questions_live_api.php which questions
-   still exist and remove the cards of deleted ones (no refresh).
-   ========================================================= */
-
-const POLL_MS = 3000;   // 3 seconds
+const POLL_MS = 3000;
 let polling = false;
 
-/* Updates the numbers after a card is removed */
 function updateCounts() {
     const cards = getCards();
     const all = cards.length;
@@ -163,7 +146,6 @@ function updateCounts() {
     });
 }
 
-/* Shows the "nothing here" box when the last question is gone */
 function showEmptyIfNeeded() {
     if (getCards().length > 0 || document.querySelector("[data-live-empty]")) {
         return;
@@ -194,7 +176,6 @@ function removeCard(card) {
 
 function checkForDeleted() {
 
-    // don't pile up requests, and don't ask while the tab is hidden
     if (polling || document.hidden) {
         return;
     }
@@ -220,7 +201,6 @@ function checkForDeleted() {
             });
         })
         .catch(function () {
-            // ignore, try again on the next round
         })
         .finally(function () {
             polling = false;
@@ -230,7 +210,6 @@ function checkForDeleted() {
 if (myQuestionsList) {
     setInterval(checkForDeleted, POLL_MS);
 
-    // when the student comes back to this tab, check immediately
     document.addEventListener("visibilitychange", function () {
         if (!document.hidden) {
             checkForDeleted();

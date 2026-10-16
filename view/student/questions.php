@@ -2,6 +2,7 @@
 session_start();
 
 require_once "../../config/config.php";
+require_once "../../config/program_helpers.php";
 
 if (empty($_SESSION["student_id"])) {
     header("Location: ../../authentication/Login/login.php");
@@ -67,12 +68,29 @@ function loadOptions(mysqli $conn, string $table, string $column): array
     return $options;
 }
 
-$subjects = loadOptions($conn, "question_subjects", "subject_name");
-$courses = loadOptions($conn, "question_courses", "course_name");
-$types = loadOptions($conn, "question_types", "type_name");
+// The student's registered program (saved at registration) decides the
+// academic context of THEIR question. It does not limit who can answer it.
+$myProgram = trim((string)($user["course"] ?? ""));
+$types     = loadOptions($conn, "question_types", "type_name");
+
+$programState   = checkStudentProgram($conn, $myProgram);
+$programIsValid = ($programState === "ok");
+$subjects       = $programIsValid ? loadSubjectsForProgram($conn, $myProgram) : [];
+
+// Shown above the form when the student cannot post yet
+$formNotice = "";
+
+if (!$programIsValid) {
+    $formNotice = programProblemMessage($programState);
+} elseif (count($subjects) === 0) {
+    $formNotice = "No subjects are set up for your program yet. Please contact the administrator.";
+}
+
+$canPost = ($programIsValid && count($subjects) > 0);
 
 /* =========================================================
    ANSWER SOMEONE ELSE'S QUESTION
+   (any student can answer, whatever their program is)
    ========================================================= */
 
 if (
@@ -151,21 +169,30 @@ if (
 
 /* =========================================================
    POST A NEW QUESTION
+   (normal form submit. When JavaScript is on, the page sends the
+   form to question_post_api.php instead, so errors show without
+   reloading. This block is the fallback and uses the same rules.)
    ========================================================= */
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $question = trim($_POST["question"] ?? "");
     $subject = trim($_POST["subject"] ?? "");
-    $course = trim($_POST["question_course"] ?? "");
     $type = trim($_POST["question_type"] ?? "");
     $attachmentName = null;
 
-    if ($question === "") {
+    // The program is NEVER taken from the form: it is always the student's own
+    $program = $myProgram;
+
+    $sentToken = (string)($_POST["csrf"] ?? "");
+
+    if ($sentToken === "" || !hash_equals($csrf, $sentToken)) {
+        $error = "Security token invalid. Please refresh the page.";
+    } elseif ($question === "") {
         $error = "Please enter your question.";
+    } elseif (!$programIsValid) {
+        $error = programProblemMessage($programState);
     } elseif (!in_array($subject, $subjects, true)) {
-        $error = "Please select a valid subject.";
-    } elseif (!in_array($course, $courses, true)) {
-        $error = "Please select a valid course.";
+        $error = "Please select a valid subject for your program.";
     } elseif (!in_array($type, $types, true)) {
         $error = "Please select a valid question type.";
     }
@@ -220,6 +247,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if ($error === "") {
+        // the questions table still calls this column question_course
         $stmt = $conn->prepare(
             "INSERT INTO questions
              (user_id, question, status, create_at,
@@ -235,7 +263,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $user_id,
                 $question,
                 $subject,
-                $course,
+                $program,
                 $type,
                 $attachmentName
             );
@@ -263,6 +291,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 /* =========================================================
    COMMUNITY QUESTIONS (posted by OTHER students only)
+   Questions from ALL programs are listed on purpose, so students
+   can help each other across programs.
    Your own questions are in "My Questions".
    already_reported = 1 when YOU already reported that question.
    ========================================================= */
@@ -364,6 +394,29 @@ $displayName = trim(
     <!-- filemtime() gives the time the file was last saved, so the link changes when the file changes -->
 <link rel="stylesheet" href="../../asset/css/question.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question.css') ?>">
 <link rel="stylesheet" href="../../asset/css/question_answer.css?v=<?= filemtime(__DIR__ . '/../../asset/css/question_answer.css') ?>">
+
+    <!-- Small additions for the read-only Program field and form notices.
+         They reuse the same colours as question.css. -->
+    <style>
+        .question-composer .question-field select:disabled {
+            cursor: not-allowed;
+            opacity: 1;
+            color: #d4a657;
+            border-color: #4d3f24;
+            background-color: #15140f;
+        }
+
+        .ask-form-bottom button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .form-message-warn {
+            background: #211d12;
+            border-color: #5c4a24;
+            color: #e3c47d;
+        }
+    </style>
 </head>
 
 <body>
@@ -483,51 +536,62 @@ $displayName = trim(
                 </div>
             </div>
 
-            <?php if ($error !== ""): ?>
-                <div class="form-message form-message-error">
-                    <?= e($error) ?>
+            <!-- Validation / server errors (also filled by JavaScript, no reload) -->
+            <div
+                class="form-message form-message-error"
+                id="askError"
+                role="alert"
+                <?= $error === "" ? "hidden" : "" ?>
+            ><?= e($error) ?></div>
+
+            <?php if ($formNotice !== ""): ?>
+                <div class="form-message form-message-warn" role="status">
+                    <?= e($formNotice) ?>
                 </div>
             <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="askForm">
+
+                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
 
                 <div class="question-composer">
 
                     <div class="question-fields-grid">
 
+                        <!-- PROGRAM: read-only, always the student's registered program -->
+                        <div class="question-field">
+                            <select
+                                id="question_program"
+                                aria-label="Program (your registered program)"
+                                title="Your registered program"
+                                disabled
+                            >
+                                <?php if ($myProgram !== ""): ?>
+                                    <option selected>Program: <?= e($myProgram) ?></option>
+                                <?php else: ?>
+                                    <option selected>Program: not set</option>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+
+                        <!-- SUBJECT: only subjects linked to the student's program -->
                         <div class="question-field">
                             <select
                                 name="subject"
                                 id="subject"
                                 aria-label="Subject"
-                                required
+                                <?= count($subjects) > 0 ? "required" : "disabled" ?>
                             >
-                                <option value="">Subject +</option>
+                                <?php if (count($subjects) > 0): ?>
+                                    <option value="">Subject +</option>
+                                <?php else: ?>
+                                    <option value="">No subjects available for your program</option>
+                                <?php endif; ?>
 
                                 <?php foreach ($subjects as $option): ?>
                                     <option
                                         value="<?= e($option) ?>"
                                         <?= (($_POST["subject"] ?? "") === $option) ? "selected" : "" ?>
-                                    >
-                                        <?= e($option) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="question-field">
-                            <select
-                                name="question_course"
-                                id="question_course"
-                                aria-label="Course"
-                                required
-                            >
-                                <option value="">Course +</option>
-
-                                <?php foreach ($courses as $option): ?>
-                                    <option
-                                        value="<?= e($option) ?>"
-                                        <?= (($_POST["question_course"] ?? "") === $option) ? "selected" : "" ?>
                                     >
                                         <?= e($option) ?>
                                     </option>
@@ -623,8 +687,8 @@ $displayName = trim(
                 </div>
 
                 <div class="ask-form-bottom">
-                    <span>Ask your question to other students.</span>
-                    <button type="submit">Post Question →</button>
+                    <span>Open to students from any program. Follow your instructors' rules on exams and graded work.</span>
+                    <button type="submit" id="askSubmit" <?= $canPost ? "" : "disabled" ?>>Post Question →</button>
                 </div>
 
             </form>
@@ -850,6 +914,83 @@ $displayName = trim(
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../asset/js/question.js?v=<?= filemtime(__DIR__ . '/../../asset/js/question.js') ?>"></script>
 <script src="../../asset/js/live_questions.js?v=<?= filemtime(__DIR__ . '/../../asset/js/live_questions.js') ?>"></script>
+
+<!-- Post the question without reloading the page, so errors show in place.
+     The server (question_post_api.php) does the real validation. -->
+<script>
+(function () {
+    var form = document.getElementById("askForm");
+    var box = document.getElementById("askError");
+    var button = document.getElementById("askSubmit");
+
+    if (!form || !box || !button || !window.fetch || !window.FormData) {
+        return;
+    }
+
+    var label = button.textContent;
+
+    function showError(message, field) {
+        box.textContent = message;
+        box.hidden = false;
+
+        if (field && form.elements[field] && !form.elements[field].disabled) {
+            form.elements[field].focus();
+        }
+    }
+
+    function reset() {
+        button.disabled = false;
+        button.textContent = label;
+    }
+
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        box.hidden = true;
+
+        if (form.elements["question"].value.trim() === "") {
+            showError("Please enter your question.", "question");
+            return;
+        }
+
+        if (form.elements["subject"].value === "") {
+            showError("Please select a subject for your program.", "subject");
+            return;
+        }
+
+        if (form.elements["question_type"].value === "") {
+            showError("Please select a question type.", "question_type");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Posting...";
+
+        fetch("question_post_api.php", {
+            method: "POST",
+            body: new FormData(form),
+            credentials: "same-origin"
+        })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    return { success: false, message: "Something went wrong. Please try again." };
+                });
+            })
+            .then(function (data) {
+                if (data.success) {
+                    window.location.href = "questions.php?notice=question_posted";
+                    return;
+                }
+
+                showError(data.message || "Something went wrong. Please try again.", data.field);
+                reset();
+            })
+            .catch(function () {
+                showError("Could not reach the server. Please check your connection and try again.");
+                reset();
+            });
+    });
+})();
+</script>
 
 </body>
 </html>

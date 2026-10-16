@@ -101,8 +101,22 @@ if ($action === 'send') {
         respond(false, 'Invalid course or year level.');
     }
 
+    // Same password rules as Change Password (checked here too,
+    // because JavaScript can be bypassed)
     if (strlen($password) < 8) {
         respond(false, 'Password must be at least 8 characters.');
+    }
+
+    if (!preg_match('/[A-Z]/', $password)) {
+        respond(false, 'Password must have at least one uppercase letter.');
+    }
+
+    if (!preg_match('/[a-z]/', $password)) {
+        respond(false, 'Password must have at least one lowercase letter.');
+    }
+
+    if (!preg_match('/[0-9]/', $password)) {
+        respond(false, 'Password must have at least one number.');
     }
 
     if ($password !== $confirm_password) {

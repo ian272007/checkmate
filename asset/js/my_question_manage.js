@@ -1,9 +1,3 @@
-/* =========================================================
-   MY QUESTIONS: edit and delete your own questions
-   Put this file in: asset/js/my_question_manage.js
-   Load it AFTER my_question.js (it uses removeCard() from there).
-   ========================================================= */
-
 (function () {
     const list = document.getElementById("myQuestionsList");
 
@@ -36,8 +30,6 @@
     let activeCard = null;
 
 
-    /* ---------- small pop-up message ---------- */
-
     function toast(type, message) {
         let box = document.getElementById("mqToasts");
 
@@ -62,8 +54,6 @@
         }, 4000);
     }
 
-
-    /* ---------- open / close modals ---------- */
 
     function openModal(modal) {
         modal.hidden = false;
@@ -105,14 +95,11 @@
     });
 
 
-    /* ---------- helpers ---------- */
-
     function uploadUrl(name) {
         return "../../uploads/questions/" + encodeURIComponent(name);
     }
 
     function setSelect(select, value) {
-        // if the option was switched off by the admin, still show the current value
         const exists = Array.prototype.some.call(select.options, function (opt) {
             return opt.value === value;
         });
@@ -152,8 +139,6 @@
         }
     }
 
-
-    /* ---------- EDIT ---------- */
 
     function openEdit(card) {
         activeCard = card;
@@ -246,7 +231,6 @@
             });
     });
 
-    /* Show the new values on the card without reloading */
     function applyEdit(card, result) {
         card.dataset.question = result.question;
         card.dataset.subject = result.subject;
@@ -273,8 +257,6 @@
         }
     }
 
-
-    /* ---------- DELETE ---------- */
 
     function openDelete(card) {
         activeCard = card;
@@ -324,7 +306,6 @@
                 closeModal(deleteModal);
                 toast("success", result.message);
 
-                // removeCard() is in my_question.js: fades it out and updates the counts
                 removeCard(card);
             })
             .catch(function () {
@@ -334,8 +315,6 @@
             });
     });
 
-
-    /* ---------- three-dot menu (top right of each question) ---------- */
 
     let openMenu = null;
 
@@ -354,7 +333,6 @@
         const width = dropdown.offsetWidth;
         const height = dropdown.offsetHeight;
 
-        // open below the dots, or above if there is no room
         let top = rect.bottom + 6;
         if (top + height > window.innerHeight - 8) {
             top = Math.max(8, rect.top - height - 6);
@@ -386,7 +364,6 @@
         openMenu = { button: dots, dropdown: dropdown };
     });
 
-    // click anywhere else, press Esc, scroll or resize = close the menu
     document.addEventListener("click", function (event) {
         if (openMenu && !openMenu.dropdown.contains(event.target)) {
             closeMenu();
@@ -402,8 +379,6 @@
     window.addEventListener("scroll", closeMenu, true);
     window.addEventListener("resize", closeMenu);
 
-
-    /* ---------- Edit / Delete choices inside the menu ---------- */
 
     list.addEventListener("click", function (event) {
         const edit = event.target.closest(".mq-edit");

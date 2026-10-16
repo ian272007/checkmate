@@ -130,22 +130,31 @@
                     </div>
                 </div>
 
-                <!-- TERMS -->
+                <!-- PASSWORD RULES (updated live by register.js) -->
+                <ul class="pw-rules" id="pwRules" aria-live="polite">
+                    <li id="ruleLength"><span class="pw-mark">&#10003;</span>At least 8 characters</li>
+                    <li id="ruleUpper"><span class="pw-mark">&#10003;</span>One uppercase letter</li>
+                    <li id="ruleLower"><span class="pw-mark">&#10003;</span>One lowercase letter</li>
+                    <li id="ruleNumber"><span class="pw-mark">&#10003;</span>One number</li>
+                    <li id="ruleMatch"><span class="pw-mark">&#10003;</span>Both passwords match</li>
+                </ul>
+
+                <!-- TERMS (links open in a new tab so the form is not lost) -->
                 <div class="terms">
                     <input type="checkbox" id="agree">
                     <label for="agree">
                         I agree to the
-                        <a href="#">Terms and Conditions</a>
+                        <a href="/checkmate/authentication/terms.php" target="_blank" rel="noopener">Terms and Conditions</a>
                         and
-                        <a href="#">Privacy Policy</a>
+                        <a href="/checkmate/authentication/privacy.php" target="_blank" rel="noopener">Privacy Policy</a>
                     </label>
                 </div>
 
                 <!-- ERROR MESSAGE -->
                 <p class="error" id="errorMsg"></p>
 
-                <!-- SUBMIT -->
-                <button type="submit" class="create-btn" id="createBtn">
+                <!-- SUBMIT (disabled until all password rules pass) -->
+                <button type="submit" class="create-btn" id="createBtn" disabled>
                     Create Account
                     <span class="arrow">&rarr;</span>
                 </button>

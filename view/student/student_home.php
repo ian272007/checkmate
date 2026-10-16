@@ -11,6 +11,7 @@ if (
 }
 
 require_once "../../config/config.php";
+require_once "../../config/program_helpers.php";
 
 $student_id = $_SESSION["student_id"];
 
@@ -118,9 +119,24 @@ function loadOptions(mysqli $conn, string $table, string $column): array
     return $options;
 }
 
-$subjects = loadOptions($conn, "question_subjects", "subject_name");
-$courses  = loadOptions($conn, "question_courses", "course_name");
-$types    = loadOptions($conn, "question_types", "type_name");
+/* The student's registered program decides which subjects they can pick.
+   It does NOT limit which questions they can see or answer. */
+$myProgram = trim((string)($user["course"] ?? ""));
+$types     = loadOptions($conn, "question_types", "type_name");
+
+$programState   = checkStudentProgram($conn, $myProgram);
+$programIsValid = ($programState === "ok");
+$subjects       = $programIsValid ? loadSubjectsForProgram($conn, $myProgram) : [];
+
+$programNotice = "";
+
+if (!$programIsValid) {
+    $programNotice = programProblemMessage($programState);
+} elseif (count($subjects) === 0) {
+    $programNotice = "No subjects are set up for your program yet. Please contact the administrator.";
+}
+
+$canPost = ($programIsValid && count($subjects) > 0);
 
 $firstInitial = substr(
     trim($user["first_name"] ?? ""),
@@ -240,7 +256,7 @@ try {
         href="../../asset/css/student_home.css"
     >
 
-    <!-- Styles for the subject / course / type / attachment row -->
+    <!-- Styles for the subject / program / type / attachment row -->
     <link
         rel="stylesheet"
         href="../../asset/css/student_home_ask.css?v=<?= filemtime(__DIR__ . '/../../asset/css/student_home_ask.css') ?>"
@@ -274,6 +290,18 @@ try {
         /* keep the arrow box from shrinking inside the question row */
         .question-item .open-button {
             flex-shrink: 0;
+        }
+
+        /* read-only Program box and disabled Make a Move button */
+        .ask-fields select:disabled {
+            cursor: not-allowed;
+            opacity: 1;
+            color: #d4a657;
+        }
+
+        .ask-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
     </style>
 
@@ -444,21 +472,38 @@ try {
                     maxlength="5000"
                 ></textarea>
 
-                <!-- SUBJECT / COURSE / QUESTION TYPE -->
+                <!-- PROGRAM (read-only) / SUBJECT / QUESTION TYPE -->
                 <div class="ask-fields">
 
-                    <select id="askSubject" aria-label="Subject" required>
-                        <option value="">Subject</option>
+                    <!-- Subjects: only those linked to the student's program -->
+                    <select
+                        id="askSubject"
+                        aria-label="Subject"
+                        <?= count($subjects) > 0 ? "required" : "disabled" ?>
+                    >
+                        <?php if (count($subjects) > 0): ?>
+                            <option value="">Subject</option>
+                        <?php else: ?>
+                            <option value="">No subjects available for your program</option>
+                        <?php endif; ?>
+
                         <?php foreach ($subjects as $option): ?>
                             <option value="<?= e($option) ?>"><?= e($option) ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="askCourse" aria-label="Course" required>
-                        <option value="">Course</option>
-                        <?php foreach ($courses as $option): ?>
-                            <option value="<?= e($option) ?>"><?= e($option) ?></option>
-                        <?php endforeach; ?>
+                    <!-- Program: locked to the student's registered program -->
+                    <select
+                        id="askCourse"
+                        aria-label="Program (your registered program)"
+                        title="Your registered program"
+                        disabled
+                    >
+                        <?php if ($myProgram !== ""): ?>
+                            <option value="<?= e($myProgram) ?>" selected>Program: <?= e($myProgram) ?></option>
+                        <?php else: ?>
+                            <option value="" selected>Program: not set</option>
+                        <?php endif; ?>
                     </select>
 
                     <select id="askType" aria-label="Question type" required>
@@ -471,7 +516,12 @@ try {
                 </div>
 
                 <!-- message shown when something is missing or went wrong -->
-                <div class="ask-message" id="askMessage" role="alert" hidden></div>
+                <div
+                    class="ask-message"
+                    id="askMessage"
+                    role="alert"
+                    <?= $programNotice === "" ? "hidden" : "" ?>
+                ><?= e($programNotice) ?></div>
 
                 <div class="ask-bottom">
 
@@ -523,6 +573,7 @@ try {
                         type="button"
                         class="ask-button"
                         id="askButton"
+                        <?= $canPost ? "" : "disabled" ?>
                     >
                         <span class="ask-button-label" id="askButtonLabel">Make a Move</span>
                         <span>→</span>

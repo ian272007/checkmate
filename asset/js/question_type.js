@@ -1,11 +1,7 @@
-// ---------- 1. DATA ----------
-// "types", "csrfToken" and "pendingReports" are created by question_type.php
-
 var PER_PAGE = 10;
 var currentPage = 1;
 
 
-// ---------- 2. GET ELEMENTS ----------
 var toast = document.getElementById("toast");
 var tableBody = document.getElementById("tableBody");
 var showingText = document.getElementById("showingText");
@@ -20,7 +16,6 @@ var formName = document.getElementById("formName");
 var saveButton = document.getElementById("saveForm");
 
 
-// ---------- 3. TOAST ----------
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add("show");
@@ -31,7 +26,6 @@ function showToast(message) {
 }
 
 
-// ---------- 4. SMALL HELPERS ----------
 function makeSafe(text) {
     text = String(text == null ? "" : text);
     text = text.replace(/&/g, "&amp;");
@@ -113,7 +107,6 @@ function buildPagination(total) {
 }
 
 
-// ---------- 5. SUMMARY CARDS ----------
 function updateStats() {
 
     var active = 0;
@@ -139,7 +132,6 @@ for (var s = 0; s < statCards.length; s++) {
 }
 
 
-// ---------- 6. SHOW THE TABLE ----------
 function showTable() {
 
     var searchText = searchInput.value.toLowerCase().trim();
@@ -172,7 +164,6 @@ function showTable() {
         var r = result[j];
         var statusClass = String(r.status).toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        // archived rows look a little faded
         html += "<tr" + ((r.status === "Archived") ? " class='is-archived'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.name) + "</td>";
@@ -180,7 +171,6 @@ function showTable() {
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
         html += "<td>";
 
-        // Active -> Archive button.  Archived -> Restore button.
         if (r.status === "Archived") {
             html += "<button class='action-btn restore' onclick='changeType(" + r.id + ", \"restore\")'>Restore</button>";
         } else {
@@ -214,9 +204,6 @@ statusFilter.addEventListener("change", function () {
 });
 
 
-// ---------- 7. ARCHIVE / RESTORE ----------
-// action is "archive" or "restore"
-// asks first with the styled dialog from cm_confirm.js
 function changeType(id, action) {
 
     var t = findType(id);
@@ -285,7 +272,6 @@ function changeType(id, action) {
 }
 
 
-// ---------- 8. ADD POPUP ----------
 function openForm() {
 
     formError.textContent = "";
@@ -322,7 +308,6 @@ saveButton.addEventListener("click", function () {
 
     saveButton.disabled = true;
 
-    // new types are always Active
     callApi({ action: "add", name: name, status: "Active" }, function (data) {
 
         saveButton.disabled = false;
@@ -343,7 +328,6 @@ saveButton.addEventListener("click", function () {
 });
 
 
-// ---------- 9. NOTIFICATION BUTTON ----------
 document.getElementById("notificationButton").addEventListener("click", function () {
     if (pendingReports > 0) {
         showToast("You have " + pendingReports + " pending report(s).");
@@ -353,7 +337,6 @@ document.getElementById("notificationButton").addEventListener("click", function
 });
 
 
-// ---------- 10. OTHER SIDEBAR LINKS ----------
 var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
 
 for (var i = 0; i < sidebarLinks.length; i++) {
@@ -366,7 +349,6 @@ for (var i = 0; i < sidebarLinks.length; i++) {
 }
 
 
-// ---------- 11. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -389,6 +371,5 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-// ---------- 12. START ----------
 updateStats();
 showTable();

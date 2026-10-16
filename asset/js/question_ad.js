@@ -1,9 +1,3 @@
-// ---------- 1. DATA ----------
-// "questions", "csrfToken" and "pendingReports" are created by question_ad.php
-// (the list comes straight from the database)
-
-
-// ---------- 2. GET ELEMENTS ----------
 var toast = document.getElementById("toast");
 var questionsBody = document.getElementById("questionsBody");
 var showingText = document.getElementById("showingText");
@@ -13,7 +7,6 @@ var categoryFilter = document.getElementById("categoryFilter");
 var statusFilter = document.getElementById("statusFilter");
 
 
-// ---------- 3. TOAST ----------
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add("show");
@@ -24,8 +17,6 @@ function showToast(message) {
 }
 
 
-// ---------- 4. MAKE TEXT SAFE ----------
-// so html inside a question can't break the page
 function makeSafe(text) {
     text = String(text == null ? "" : text);
     text = text.replace(/&/g, "&amp;");
@@ -37,7 +28,6 @@ function makeSafe(text) {
 }
 
 
-// ---------- 5. MAKE THE ID LOOK LIKE #001 ----------
 function formatId(number) {
     var text = "00" + number;
     if (number >= 100) {
@@ -48,7 +38,6 @@ function formatId(number) {
     return "#" + text;
 }
 
-// cut long text with ... (used in the confirm popup)
 function shorten(text, max) {
     text = String(text == null ? "" : text);
     if (text.length > max) {
@@ -58,7 +47,6 @@ function shorten(text, max) {
 }
 
 
-// ---------- 6. SHOW THE TABLE ----------
 function showTable(list) {
 
     var html = "";
@@ -67,10 +55,8 @@ function showTable(list) {
 
         var q = list[i];
 
-        // class name for the badge color (active, archived, ...)
         var statusClass = String(q.status || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-        // archived rows look a little faded
         var rowClass = (q.status === "Archived") ? " class='is-archived'" : "";
 
         html += "<tr" + rowClass + ">";
@@ -82,7 +68,6 @@ function showTable(list) {
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(q.status || "-") + "</span></td>";
         html += "<td>";
 
-        // Active question -> Archive button.  Archived question -> Restore button.
         if (q.status === "Archived") {
             html += "<button class='action-btn restore' onclick='changeQuestion(" + q.id + ", \"restore\")'>Restore</button>";
         } else {
@@ -104,7 +89,6 @@ function showTable(list) {
 }
 
 
-// ---------- 7. SEARCH AND FILTERS ----------
 function applyFilters() {
 
     var searchText = searchInput.value.toLowerCase().trim();
@@ -139,7 +123,6 @@ categoryFilter.addEventListener("change", applyFilters);
 statusFilter.addEventListener("change", applyFilters);
 
 
-// ---------- 8. ARCHIVE / RESTORE BUTTON ----------
 function findQuestion(id) {
     for (var i = 0; i < questions.length; i++) {
         if (questions[i].id === id) {
@@ -149,8 +132,6 @@ function findQuestion(id) {
     return null;
 }
 
-// action is "archive" or "restore"
-// asks first with the styled dialog from cm_confirm.js
 function changeQuestion(id, action) {
     var q = findQuestion(id);
     if (q === null) {
@@ -187,7 +168,6 @@ function changeQuestion(id, action) {
             return;
         }
 
-        // tell PHP to change the status in the database
         var body = "id=" + encodeURIComponent(id) +
                    "&action=" + encodeURIComponent(action) +
                    "&csrf=" + encodeURIComponent(csrfToken);
@@ -206,7 +186,6 @@ function changeQuestion(id, action) {
                 return;
             }
 
-            // update the list on the page too
             q.status = data.status;
 
             applyFilters();
@@ -224,7 +203,6 @@ function changeQuestion(id, action) {
 }
 
 
-// ---------- 9. NOTIFICATION BUTTON ----------
 document.getElementById("notificationButton").addEventListener("click", function () {
     if (pendingReports > 0) {
         showToast("You have " + pendingReports + " pending report(s).");
@@ -234,7 +212,6 @@ document.getElementById("notificationButton").addEventListener("click", function
 });
 
 
-// ---------- 10. OTHER SIDEBAR LINKS ----------
 var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
 
 for (var i = 0; i < sidebarLinks.length; i++) {
@@ -247,7 +224,6 @@ for (var i = 0; i < sidebarLinks.length; i++) {
 }
 
 
-// ---------- 11. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -270,5 +246,4 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-// ---------- 12. START ----------
 showTable(questions);

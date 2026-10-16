@@ -1,15 +1,20 @@
 // ---------- 1. DATA ----------
-// "courses", "subjects", "csrfToken" and "pendingReports" are created by subject_course.php
+// "courses", "subjects", "programMap", "YEAR_LEVELS", "SEMESTERS", "csrfToken"
+// and "pendingReports" are created by subject_course.php
 // (the lists come straight from the database)
+// NOTE: the database and the API still call a program a "course".
 
 var PER_PAGE = 10;
 var currentPage = 1;
 
-// which toggle is open: courses or subjects
+// which toggle is open: courses (programs) or subjects
 var currentTab = "courses";
 
 // when editing, this holds the id being edited (null = adding new)
 var editingId = null;
+
+// the subject whose programs are open in the popup
+var programSubjectId = null;
 
 
 // ---------- 2. GET ELEMENTS ----------
@@ -27,6 +32,12 @@ var formModal = document.getElementById("formModal");
 var formError = document.getElementById("formError");
 var formName = document.getElementById("formName");
 var saveButton = document.getElementById("saveForm");
+
+var programModal = document.getElementById("programModal");
+var programRows = document.getElementById("programRows");
+var programError = document.getElementById("programError");
+var programTitle = document.getElementById("programTitle");
+var saveProgramButton = document.getElementById("saveProgram");
 
 
 // ---------- 3. TOAST ----------
@@ -71,6 +82,11 @@ function itemWord() {
     return currentTab === "courses" ? "course" : "subject";
 }
 
+// "program" or "subject" (what the admin reads on screen)
+function displayWord() {
+    return currentTab === "courses" ? "program" : "subject";
+}
+
 function capital(text) {
     return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -83,6 +99,39 @@ function findItem(id) {
         }
     }
     return null;
+}
+
+function findSubject(id) {
+    for (var i = 0; i < subjects.length; i++) {
+        if (subjects[i].id === id) {
+            return subjects[i];
+        }
+    }
+    return null;
+}
+
+function findCourse(id) {
+    for (var i = 0; i < courses.length; i++) {
+        if (courses[i].id === id) {
+            return courses[i];
+        }
+    }
+    return null;
+}
+
+// names of the programs a subject is linked to
+function programNamesOf(subjectId) {
+    var links = programMap[subjectId] || [];
+    var names = [];
+
+    for (var i = 0; i < links.length; i++) {
+        var course = findCourse(links[i].course_id);
+        if (course) {
+            names.push(course.name);
+        }
+    }
+
+    return names;
 }
 
 // sends one request to subject_course_api.php
@@ -168,6 +217,7 @@ function showTable() {
     var searchText = searchInput.value.toLowerCase().trim();
     var status = statusFilter.value;
     var result = [];
+    var isSubjects = (currentTab === "subjects");
 
     // search + status filter
     for (var i = 0; i < list.length; i++) {
@@ -190,9 +240,13 @@ function showTable() {
     var from = (currentPage - 1) * PER_PAGE;
     var to = Math.min(from + PER_PAGE, result.length);
 
-    var word = itemWord();
+    var word = displayWord();
+    var columnCount = isSubjects ? 6 : 5;
 
-    tableHead.innerHTML = "<tr><th>ID</th><th>" + capital(word) + " Name</th><th>Questions</th><th>Status</th><th>Actions</th></tr>";
+    // the Subjects table has one extra column: the programs that offer it
+    tableHead.innerHTML = "<tr><th>ID</th><th>" + capital(word) + " Name</th>" +
+        (isSubjects ? "<th>Programs</th>" : "") +
+        "<th>Questions</th><th>Status</th><th>Actions</th></tr>";
 
     var html = "";
 
@@ -205,9 +259,25 @@ function showTable() {
         html += "<tr" + ((r.status === "Archived") ? " class='is-archived'" : "") + ">";
         html += "<td class='cell-id'>" + formatId(r.id) + "</td>";
         html += "<td>" + makeSafe(r.name) + "</td>";
+
+        if (isSubjects) {
+            var names = programNamesOf(r.id);
+
+            if (names.length === 0) {
+                html += "<td class='cell-muted'>Not assigned</td>";
+            } else {
+                html += "<td class='cell-muted'>" + makeSafe(names.join(", ")) + "</td>";
+            }
+        }
+
         html += "<td class='cell-muted'>" + r.used + "</td>";
         html += "<td><span class='status " + statusClass + "'>" + makeSafe(r.status) + "</span></td>";
         html += "<td>";
+
+        // Subjects also get a button to choose their programs
+        if (isSubjects) {
+            html += "<button class='action-btn programs' onclick='openPrograms(" + r.id + ")'>Programs</button> ";
+        }
 
         // Active -> Archive button.  Archived -> Restore button.
         if (r.status === "Archived") {
@@ -221,7 +291,7 @@ function showTable() {
     }
 
     if (result.length === 0) {
-        html = "<tr class='empty-row'><td colspan='5'>No " + word + "s found. Try a different search or filter.</td></tr>";
+        html = "<tr class='empty-row'><td colspan='" + columnCount + "'>No " + word + "s found. Try a different search or filter.</td></tr>";
         showingText.textContent = "Showing 0 of " + list.length + " " + word + "s";
     } else {
         showingText.textContent = "Showing " + (from + 1) + "–" + to + " of " + result.length + " " + word + "s";
@@ -243,7 +313,7 @@ statusFilter.addEventListener("change", function () {
 });
 
 
-// ---------- 7. TOGGLE (COURSES / SUBJECTS) ----------
+// ---------- 7. TOGGLE (PROGRAMS / SUBJECTS) ----------
 function setTab(name) {
 
     currentTab = name;
@@ -258,7 +328,7 @@ function setTab(name) {
         }
     }
 
-    var word = itemWord();
+    var word = displayWord();
     searchInput.placeholder = "Search " + word + "s...";
     addButton.textContent = "+ Add " + capital(word);
 
@@ -303,7 +373,8 @@ function changeItem(id, action) {
         return;
     }
 
-    var word = itemWord();
+    var apiWord = itemWord();
+    var word = displayWord();
     var dialog;
 
     if (action === "archive") {
@@ -343,7 +414,7 @@ function changeItem(id, action) {
             return;
         }
 
-        callApi({ action: action, type: word, id: id }, function (data) {
+        callApi({ action: action, type: apiWord, id: id }, function (data) {
 
             if (!data.success) {
                 showToast(data.message);
@@ -370,14 +441,14 @@ function changeItem(id, action) {
 // openForm() with no id = add new, openForm(id) = edit that one
 function openForm(id) {
 
-    var word = itemWord();
+    var word = displayWord();
 
     editingId = (id === undefined) ? null : id;
     formError.textContent = "";
 
     document.getElementById("modalLabel").textContent = word.toUpperCase() + "S";
     document.getElementById("nameLabel").textContent = capital(word) + " name";
-    formName.placeholder = (currentTab === "courses") ? "BSIT" : "Web Development";
+    formName.placeholder = (currentTab === "courses") ? "BS Information Technology" : "Web Development";
 
     if (editingId === null) {
         document.getElementById("modalTitle").textContent = "Add " + word;
@@ -411,7 +482,8 @@ formModal.addEventListener("click", function (event) {
 
 saveButton.addEventListener("click", function () {
 
-    var word = itemWord();
+    var apiWord = itemWord();
+    var word = displayWord();
     var name = formName.value.trim();
     if (name === "") {
         formError.textContent = "Please enter the " + word + " name.";
@@ -419,7 +491,7 @@ saveButton.addEventListener("click", function () {
     }
 
     // new items are always Active
-    var params = { type: word, name: name, status: "Active" };
+    var params = { type: apiWord, name: name, status: "Active" };
 
     if (editingId === null) {
         params.action = "add";
@@ -440,7 +512,9 @@ saveButton.addEventListener("click", function () {
             return;
         }
 
-        if (editingId === null) {
+        var addedNew = (editingId === null);
+
+        if (addedNew) {
             currentList().push(data.item);
             showToast(capital(word) + " added.");
         } else {
@@ -455,6 +529,145 @@ saveButton.addEventListener("click", function () {
 
         updateStats();
         showTable();
+
+        // a new subject is invisible to students until it is linked to a program,
+        // so open the programs popup right away
+        if (addedNew && currentTab === "subjects") {
+            openPrograms(data.item.id);
+        }
+    });
+});
+
+
+// ---------- 9b. PROGRAMS OF A SUBJECT POPUP ----------
+// tick the programs that offer a subject, with optional year level / semester
+function optionsHtml(list, selected) {
+
+    var html = "<option value=''>Not set</option>";
+
+    for (var i = 0; i < list.length; i++) {
+        html += "<option value='" + makeSafe(list[i]) + "'" +
+            (list[i] === selected ? " selected" : "") + ">" +
+            makeSafe(list[i]) + "</option>";
+    }
+
+    return html;
+}
+
+function openPrograms(subjectId) {
+
+    var subject = findSubject(subjectId);
+    if (subject === null) {
+        return;
+    }
+
+    programSubjectId = subjectId;
+    programError.textContent = "";
+    programTitle.textContent = subject.name;
+
+    // current links, by program id
+    var current = {};
+    var links = programMap[subjectId] || [];
+    for (var i = 0; i < links.length; i++) {
+        current[links[i].course_id] = links[i];
+    }
+
+    var html = "";
+
+    if (courses.length === 0) {
+        html = "<p class='pm-help'>There are no programs yet. Add a program first.</p>";
+    }
+
+    for (var j = 0; j < courses.length; j++) {
+
+        var course = courses[j];
+        var link = current[course.id];
+        var checked = (link !== undefined);
+
+        html += "<div class='pm-row' data-course='" + course.id + "'>";
+        html += "<label class='pm-name'>";
+        html += "<input type='checkbox' class='pm-check'" + (checked ? " checked" : "") + ">";
+        html += "<span>" + makeSafe(course.name) +
+            (course.status !== "Active" ? " <span class='pm-tag'>(" + makeSafe(course.status) + ")</span>" : "") +
+            "</span>";
+        html += "</label>";
+        html += "<select class='form-input pm-year' aria-label='Year level'" + (checked ? "" : " disabled") + ">" +
+            optionsHtml(YEAR_LEVELS, checked ? link.year_level : "") + "</select>";
+        html += "<select class='form-input pm-sem' aria-label='Semester'" + (checked ? "" : " disabled") + ">" +
+            optionsHtml(SEMESTERS, checked ? link.semester : "") + "</select>";
+        html += "</div>";
+    }
+
+    programRows.innerHTML = html;
+    programModal.classList.add("show");
+}
+
+// ticking a program turns its year level / semester boxes on
+programRows.addEventListener("change", function (event) {
+
+    if (!event.target.classList.contains("pm-check")) {
+        return;
+    }
+
+    var row = event.target.closest(".pm-row");
+    var boxes = row.querySelectorAll("select");
+
+    for (var i = 0; i < boxes.length; i++) {
+        boxes[i].disabled = !event.target.checked;
+    }
+});
+
+document.getElementById("cancelProgram").addEventListener("click", function () {
+    programModal.classList.remove("show");
+});
+
+programModal.addEventListener("click", function (event) {
+    if (event.target === programModal) {
+        programModal.classList.remove("show");
+    }
+});
+
+saveProgramButton.addEventListener("click", function () {
+
+    var rows = programRows.querySelectorAll(".pm-row");
+    var chosen = [];
+
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].querySelector(".pm-check").checked) {
+            chosen.push({
+                course_id: parseInt(rows[i].getAttribute("data-course"), 10),
+                year_level: rows[i].querySelector(".pm-year").value,
+                semester: rows[i].querySelector(".pm-sem").value
+            });
+        }
+    }
+
+    saveProgramButton.disabled = true;
+    programError.textContent = "";
+
+    callApi({
+        action: "set_programs",
+        type: "subject",
+        id: programSubjectId,
+        programs: JSON.stringify(chosen)
+    }, function (data) {
+
+        saveProgramButton.disabled = false;
+
+        if (!data.success) {
+            programError.textContent = data.message;
+            return;
+        }
+
+        programMap[programSubjectId] = data.mappings;
+        programModal.classList.remove("show");
+        showTable();
+
+        if (data.mappings.length === 0) {
+            showToast("Saved. This subject is not linked to any program, so students cannot pick it.");
+        } else {
+            showToast("Program assignments saved.");
+        }
     });
 });
 
@@ -501,6 +714,7 @@ document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
         accountMenu.classList.remove("show");
         accountButton.classList.remove("open");
+        programModal.classList.remove("show");
     }
 });
 

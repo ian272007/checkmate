@@ -1,8 +1,3 @@
-// ---------- 1. DATA ----------
-// "requests" and "pendingReports" are created by collaboration.php
-// (the list comes straight from the database)
-
-// active collaborations = requests that were accepted
 var activeList = [];
 for (var n = 0; n < requests.length; n++) {
     if (requests[n].status === "Accepted") {
@@ -16,14 +11,11 @@ var ACTIVE_PER_PAGE = 6;
 var requestsPage = 1;
 var activePage = 1;
 
-// which tab is open: requests or active
 var currentTab = "requests";
 
-// extra filter when a summary card is clicked ("all" = no filter)
 var statusFilter = "all";
 
 
-// ---------- 2. GET ELEMENTS ----------
 var toast = document.getElementById("toast");
 var requestsBody = document.getElementById("requestsBody");
 var showingText = document.getElementById("showingText");
@@ -36,7 +28,6 @@ var activeShowing = document.getElementById("activeShowing");
 var activePagination = document.getElementById("activePagination");
 
 
-// ---------- 3. TOAST ----------
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add("show");
@@ -47,9 +38,6 @@ function showToast(message) {
 }
 
 
-// ---------- 4. SMALL HELPERS ----------
-
-// so html inside a name or topic can't break the page
 function makeSafe(text) {
     text = String(text == null ? "" : text);
     text = text.replace(/&/g, "&amp;");
@@ -60,7 +48,6 @@ function makeSafe(text) {
     return text;
 }
 
-// 1 becomes #CR-001
 function formatId(number) {
     var text = "00" + number;
     if (number >= 100) {
@@ -71,7 +58,6 @@ function formatId(number) {
     return "#CR-" + text;
 }
 
-// first letters of the name for the round avatar (Juan Dela Cruz -> JD)
 function initials(name) {
     var parts = String(name).trim().split(" ");
     var letters = parts[0].charAt(0);
@@ -87,7 +73,6 @@ function personHtml(name, small) {
            "<span>" + makeSafe(name) + "</span></div>";
 }
 
-// cut long text with ...
 function shorten(text, max) {
     text = String(text == null ? "" : text);
     if (text.length > max) {
@@ -96,13 +81,11 @@ function shorten(text, max) {
     return text;
 }
 
-// builds the ‹ 1 2 3 › buttons
 function buildPagination(container, total, perPage, page, onChange) {
 
     var pages = Math.ceil(total / perPage);
     container.innerHTML = "";
 
-    // nothing to page through
     if (pages <= 1) {
         return;
     }
@@ -120,7 +103,6 @@ function buildPagination(container, total, perPage, page, onChange) {
 
     addButton("‹", page - 1, false, page === 1);
 
-    // show at most 5 page numbers around the current page
     var start = Math.max(1, page - 2);
     var end = Math.min(pages, start + 4);
     start = Math.max(1, end - 4);
@@ -133,7 +115,6 @@ function buildPagination(container, total, perPage, page, onChange) {
 }
 
 
-// ---------- 5. SUMMARY CARDS ----------
 function updateStats() {
 
     var pending = 0;
@@ -148,7 +129,6 @@ function updateStats() {
 }
 
 
-// ---------- 6. REQUESTS TABLE ----------
 function showRequests() {
 
     var list = [];
@@ -159,7 +139,6 @@ function showRequests() {
         }
     }
 
-    // make sure the page number is valid
     var pages = Math.max(1, Math.ceil(list.length / REQUESTS_PER_PAGE));
     if (requestsPage > pages) { requestsPage = pages; }
     if (requestsPage < 1) { requestsPage = 1; }
@@ -202,7 +181,6 @@ function showRequests() {
 }
 
 
-// ---------- 7. ACTIVE COLLABORATIONS ----------
 function showActive() {
 
     var pages = Math.max(1, Math.ceil(activeList.length / ACTIVE_PER_PAGE));
@@ -256,7 +234,6 @@ function showActive() {
 }
 
 
-// ---------- 8. TABS ----------
 function setTab(name) {
 
     currentTab = name;
@@ -270,7 +247,6 @@ function setTab(name) {
         }
     }
 
-    // requests tab = both sections, active tab = only active
     if (name === "active") {
         requestsPanel.classList.add("hidden");
         activePanel.classList.remove("hidden");
@@ -297,7 +273,6 @@ for (var t = 0; t < tabButtons.length; t++) {
     });
 }
 
-// clicking a summary card opens the matching view
 var statCards = document.querySelectorAll(".stat-card");
 for (var s = 0; s < statCards.length; s++) {
     statCards[s].addEventListener("click", function () {
@@ -307,7 +282,7 @@ for (var s = 0; s < statCards.length; s++) {
             statusFilter = "all";
             setTab("active");
         } else {
-            statusFilter = jump;       // "all" or "Pending"
+            statusFilter = jump;
             requestsPage = 1;
             setTab("requests");
         }
@@ -315,7 +290,6 @@ for (var s = 0; s < statCards.length; s++) {
 }
 
 
-// ---------- 9. NOTIFICATION BUTTON ----------
 document.getElementById("notificationButton").addEventListener("click", function () {
     if (pendingReports > 0) {
         showToast("You have " + pendingReports + " pending report(s).");
@@ -325,7 +299,6 @@ document.getElementById("notificationButton").addEventListener("click", function
 });
 
 
-// ---------- 10. OTHER SIDEBAR LINKS ----------
 var sidebarLinks = document.querySelectorAll(".sidebar-menu a");
 
 for (var i = 0; i < sidebarLinks.length; i++) {
@@ -338,7 +311,6 @@ for (var i = 0; i < sidebarLinks.length; i++) {
 }
 
 
-// ---------- 11. ACCOUNT MENU (3 dots) ----------
 var accountButton = document.getElementById("accountMenuButton");
 var accountMenu = document.getElementById("accountMenu");
 
@@ -361,7 +333,6 @@ document.addEventListener("keydown", function (event) {
 });
 
 
-// ---------- 12. START ----------
 updateStats();
 showRequests();
 showActive();

@@ -1,27 +1,9 @@
-/* =========================================================
-   CHECKMATE: styled confirm dialog (replaces the browser's confirm())
-   Put this file in: asset/js/cm_confirm.js
-
-   Usage (it returns a Promise, so use .then or await):
-
-     cmConfirm({
-         title: "Warn ian francisco?",
-         message: "Line one.\n\nLine two (a blank line makes a new paragraph).",
-         confirmText: "Send warning",
-         cancelText: "Cancel",
-         tone: "warn"          // "warn" (gold) or "danger" (red)
-     }).then(function (ok) {
-         if (ok) { ... }
-     });
-   ========================================================= */
-
 (function () {
     let current = null;
 
     window.cmConfirm = function (options) {
         const opts = options || {};
 
-        // only one dialog at a time
         if (current) {
             current.close(false);
         }
@@ -115,7 +97,6 @@
                     return;
                 }
 
-                // keep Tab inside the dialog
                 if (event.key === "Tab") {
                     event.preventDefault();
                     (document.activeElement === cancel ? confirm : cancel).focus();
@@ -140,7 +121,6 @@
 
             current = { close: close };
 
-            // safer default: focus "Cancel" so a stray Enter doesn't confirm
             cancel.focus();
         });
     };

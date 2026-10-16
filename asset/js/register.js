@@ -1,10 +1,3 @@
-/*
- * register.js - Sign up + OTP flow for CheckMate
- * Talks to otp_api.php (action = send | resend | verify)
- */
-
-// Kung nasa ibang folder ang otp_api.php, palitan ang path na ito
-// hal. '/checkmate/authentication/Register/otp_api.php'
 const API_URL = 'otp_api.php';
 
 const $ = (id) => document.getElementById(id);
@@ -24,10 +17,12 @@ const verifyBtn  = $('verifyBtn');
 const resendBtn  = $('resendBtn');
 const backBtn    = $('backBtn');
 
+const passwordInput = $('password');
+const confirmInput  = $('confirm');
+
 let expiryInterval = null;
 let cooldownInterval = null;
 
-/* ---------- helpers ---------- */
 
 async function callApi(data) {
     const body = new FormData();
@@ -71,7 +66,6 @@ function showSignupView() {
     signupView.classList.remove('hidden');
 }
 
-/* ---------- timers ---------- */
 
 function startExpiry(seconds) {
     clearInterval(expiryInterval);
@@ -146,19 +140,58 @@ document.querySelectorAll('.eye-btn').forEach((btn) => {
     });
 });
 
+/* ---------- password rules (same as Change Password) ---------- */
+
+function checkRules() {
+    const pass = passwordInput.value;
+
+    return {
+        length: pass.length >= 8,
+        upper:  /[A-Z]/.test(pass),
+        lower:  /[a-z]/.test(pass),
+        number: /[0-9]/.test(pass),
+        match:  pass !== '' && pass === confirmInput.value
+    };
+}
+
+function setRule(id, passed) {
+    $(id).classList.toggle('ok', passed);
+}
+
+function updateRules() {
+    const rules = checkRules();
+
+    setRule('ruleLength', rules.length);
+    setRule('ruleUpper',  rules.upper);
+    setRule('ruleLower',  rules.lower);
+    setRule('ruleNumber', rules.number);
+    setRule('ruleMatch',  rules.match);
+
+    const allPassed = rules.length && rules.upper && rules.lower &&
+                      rules.number && rules.match;
+
+    createBtn.disabled = !allPassed;
+
+    return allPassed;
+}
+
+passwordInput.addEventListener('input', updateRules);
+confirmInput.addEventListener('input', updateRules);
+updateRules();
+
 /* ---------- STEP 1: send OTP ---------- */
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     showError(errorMsg, '');
 
-    if (!$('agree').checked) {
-        showError(errorMsg, 'Please agree to the Terms and Privacy Policy.');
+    if (!updateRules()) {
+        showError(errorMsg, 'Your password does not meet all of the rules.');
         return;
     }
 
-    if ($('password').value !== $('confirm').value) {
-        showError(errorMsg, 'Passwords do not match.');
+    if (!$('agree').checked) {
+        showError(errorMsg, 'Please agree to the Terms and Privacy Policy.');
         return;
     }
 
@@ -168,6 +201,7 @@ form.addEventListener('submit', async (e) => {
     setLoading(createBtn, true);
     const res = await callApi(data);
     setLoading(createBtn, false);
+    updateRules();
 
     if (!res.ok) {
         showError(errorMsg, res.message);
@@ -210,7 +244,6 @@ verifyBtn.addEventListener('click', async () => {
     setTimeout(() => { window.location.href = res.redirect; }, 1200);
 });
 
-/* ---------- resend ---------- */
 
 resendBtn.addEventListener('click', async () => {
     showError(otpError, '');
@@ -237,6 +270,6 @@ resendBtn.addEventListener('click', async () => {
     startCooldown(res.cooldown);
 });
 
-/* ---------- back ---------- */
+
 
 backBtn.addEventListener('click', showSignupView);

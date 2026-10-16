@@ -1,12 +1,3 @@
-/* =========================================
-   CHECKMATE ADMIN HOME
-   admin_home.js
-
-   The sidebar links and Quick access cards are normal
-   links now, so they need no JavaScript.
-   This file only handles the three-dot account menu.
-   ========================================= */
-
 (function () {
     "use strict";
 
@@ -17,7 +8,6 @@
         return;
     }
 
-    // put the menu above the three dots (they sit at the bottom of the sidebar)
     function place() {
         var rect = button.getBoundingClientRect();
 
@@ -61,7 +51,6 @@
         }
     });
 
-    // clicking anywhere else, pressing Esc, resizing or scrolling closes it
     document.addEventListener("click", function (event) {
         if (!menu.hidden && !menu.contains(event.target)) {
             close();
